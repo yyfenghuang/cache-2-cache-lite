@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+
+# Virtual env
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# Model & data cache (besar, jangan commit)
+models/
+data/raw/
+data/cache/
+checkpoints/
+*.pt
+*.bin
+*.safetensors
+
+# Logs
+logs/
+*.log
+wandb/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
