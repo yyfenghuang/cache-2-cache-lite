@@ -142,9 +142,11 @@ def test_capture_rehearsal_on_models_with_no_checkpoint():
             head_dim=128, max_position_embeddings=512, rope_parameters=rope,
             _attn_implementation="eager")).eval()
 
+        # One entry per split, derived from SPLITS rather than listed, so a
+        # split added to the pipeline cannot be missed here again.
         chunks = {
-            "train": [torch.randint(0, 512, (96,)).tolist() for _ in range(6)],
-            "held_out": [torch.randint(0, 512, (96,)).tolist() for _ in range(3)],
+            split: [torch.randint(0, 512, (96,)).tolist() for _ in range(n)]
+            for split, n in zip(SPLITS, (6, 3, 3))
         }
         for role, model in (("sharer", sharer), ("receiver", receiver)):
             for split in SPLITS:
