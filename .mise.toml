@@ -1,0 +1,43 @@
+[tools]
+python = "3.11.9"
+
+[tasks.contracts]
+description = "Task for test: KV geometry, rotary ladders, layer and token alignment"
+dir = "{{config_root}}"
+run = [
+  "python tests/test_static_names.py",
+  "python tests/test_alignment.py",
+  "python scripts/capture_contracts.py",
+  "python tests/test_contracts.py",
+]
+
+[tasks.substrate]
+description = "Gate an injected cache is read, and position ids are absolute"
+dir = "{{config_root}}"
+run = [
+  "python tests/test_static_names.py",
+  "python tests/test_cache_ops.py",
+  "python scripts/capture_substrate.py",
+  "python tests/test_substrate.py",
+]
+
+[tasks.geometry]
+description = "Tier 2 gate: both caches at the contract shapes, and the null the training is graded against"
+dir = "{{config_root}}"
+run = [
+  "python tests/test_static_names.py",
+  "python tests/test_cache_ops.py",
+  "python scripts/capture_dual_cache.py",
+  "python tests/test_geometry.py",
+]
+
+[tasks.train]
+description = "Tier 3 gate: a projection beats a constant predictor on data it did not see"
+dir = "{{config_root}}"
+run = [
+  "python tests/test_static_names.py",
+  "python tests/test_cache_ops.py",
+  "python tests/test_projection.py",
+  "python scripts/train_projection.py",
+  "python tests/test_train.py",
+]

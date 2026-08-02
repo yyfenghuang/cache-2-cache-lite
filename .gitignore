@@ -38,3 +38,20 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+sandbox/
+
+# results: json is tracked, tensors and weights are not
+results/*.pt
+results/*.pth
+results/*.bin
+results/*.safetensors
+results/*.npy
+results/*.npz
+
+.venv/
+.mise.local.toml

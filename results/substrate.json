@@ -1,0 +1,49 @@
+{
+  "conditions": {
+    "baseline_vs_itself": 0.0,
+    "noop_injection": 0.0,
+    "corrupted_injection": 27.818161010742188,
+    "position_absolute": 1.52587890625e-05,
+    "position_relative": 9.705964088439941
+  },
+  "ratios": {
+    "baseline_vs_itself": 0.0,
+    "noop_injection": 0.0,
+    "corrupted_injection": 1.339349452477324,
+    "position_absolute": 7.34658583952926e-07,
+    "position_relative": 0.46730902458277823
+  },
+  "ulps": {
+    "baseline_vs_itself": 0.0,
+    "noop_injection": 0.0,
+    "corrupted_injection": 14584728.0,
+    "position_absolute": 8.0,
+    "position_relative": 5088720.5
+  },
+  "logit_scale": 20.76990509033203,
+  "logit_ulp": 1.9073486328125e-06,
+  "torch_num_threads": 6,
+  "sequence": {
+    "n_total": 69,
+    "n_prefix": 34,
+    "n_new": 35
+  },
+  "corruption_check": {
+    "max_norm_deviation": 3.0517578125e-05,
+    "max_abs_cosine": 0.27970579266548157
+  },
+  "cache_shape": [
+    1,
+    8,
+    34,
+    128
+  ],
+  "n_layers": 28,
+  "seed": 1234,
+  "model_id": "Qwen/Qwen3-0.6B",
+  "dtype": "torch.float32",
+  "device": "cpu",
+  "attn_implementation": "eager",
+  "transformers_version": "5.14.1",
+  "torch_version": "2.13.0+cpu"
+}

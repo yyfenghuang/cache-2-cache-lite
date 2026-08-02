@@ -1,0 +1,535 @@
+{
+  "sharer": {
+    "name": "sharer",
+    "model_type": "qwen2",
+    "n_layers": 24,
+    "hidden_size": 896,
+    "n_q_heads": 14,
+    "n_kv_heads": 2,
+    "n_kv_heads_declared_in_config": true,
+    "gqa_group_size": 7,
+    "head_dim": 64,
+    "head_dim_declared_in_config": false,
+    "head_dim_from_hidden_size": 64,
+    "head_dim_is_decoupled": false,
+    "kv_width": 128,
+    "cache_tensor_shape": "[batch, n_kv_heads, seq, head_dim]",
+    "rope_theta": 1000000.0,
+    "rope_theta_source": "config.rope_parameters",
+    "rope_theta_legacy_attr": null,
+    "rope_theta_legacy_agrees": null,
+    "rope_type": "default",
+    "rope_parameters": {
+      "rope_theta": 1000000.0,
+      "rope_type": "default"
+    },
+    "partial_rotary_factor": 1.0,
+    "partial_rotary_factor_declared_in_config": false,
+    "n_inv_freq": 32,
+    "inv_freq": [
+      1.0,
+      0.6493816315762113,
+      0.4216965034285823,
+      0.27384196342643613,
+      0.17782794100389226,
+      0.1154781984689458,
+      0.07498942093324558,
+      0.04869675251658631,
+      0.03162277660168379,
+      0.020535250264571463,
+      0.01333521432163324,
+      0.008659643233600653,
+      0.005623413251903491,
+      0.003651741272548377,
+      0.002371373705661655,
+      0.0015399265260594918,
+      0.001,
+      0.0006493816315762112,
+      0.0004216965034285823,
+      0.00027384196342643616,
+      0.00017782794100389227,
+      0.00011547819846894582,
+      7.498942093324559e-05,
+      4.869675251658631e-05,
+      3.1622776601683795e-05,
+      2.0535250264571462e-05,
+      1.333521432163324e-05,
+      8.659643233600654e-06,
+      5.623413251903491e-06,
+      3.651741272548377e-06,
+      2.3713737056616552e-06,
+      1.539926526059492e-06
+    ],
+    "has_q_norm": false,
+    "has_k_norm": false,
+    "vocab_size": 151936,
+    "max_position_embeddings": 32768,
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "qk_norm_probe_method": "meta-instantiated Qwen2Attention",
+    "inv_freq_crosscheck": {
+      "ran": true,
+      "match": true,
+      "source": "Qwen2RotaryEmbedding",
+      "attempts": [],
+      "their_dtype": "torch.float32",
+      "their_eps": 1.1920928955078125e-07,
+      "max_rel_dev": 7.409097495008042e-08,
+      "max_dev_ulp": 0.6215201451940442,
+      "ulp_budget": 4.0,
+      "rope_type": "default",
+      "attention_scaling": 1.0
+    }
+  },
+  "receiver": {
+    "name": "receiver",
+    "model_type": "qwen3",
+    "n_layers": 28,
+    "hidden_size": 1024,
+    "n_q_heads": 16,
+    "n_kv_heads": 8,
+    "n_kv_heads_declared_in_config": true,
+    "gqa_group_size": 2,
+    "head_dim": 128,
+    "head_dim_declared_in_config": true,
+    "head_dim_from_hidden_size": 64,
+    "head_dim_is_decoupled": true,
+    "kv_width": 1024,
+    "cache_tensor_shape": "[batch, n_kv_heads, seq, head_dim]",
+    "rope_theta": 1000000.0,
+    "rope_theta_source": "config.rope_parameters",
+    "rope_theta_legacy_attr": null,
+    "rope_theta_legacy_agrees": null,
+    "rope_type": "default",
+    "rope_parameters": {
+      "rope_theta": 1000000,
+      "rope_type": "default"
+    },
+    "partial_rotary_factor": 1.0,
+    "partial_rotary_factor_declared_in_config": false,
+    "n_inv_freq": 64,
+    "inv_freq": [
+      1.0,
+      0.8058421877614819,
+      0.6493816315762113,
+      0.5232991146814947,
+      0.4216965034285823,
+      0.3398208328942559,
+      0.27384196342643613,
+      0.220673406908459,
+      0.17782794100389226,
+      0.14330125702369628,
+      0.1154781984689458,
+      0.0930572040929699,
+      0.07498942093324558,
+      0.06042963902381328,
+      0.04869675251658631,
+      0.03924189758484536,
+      0.03162277660168379,
+      0.025482967479793464,
+      0.020535250264571463,
+      0.016548170999431816,
+      0.01333521432163324,
+      0.010746078283213174,
+      0.008659643233600653,
+      0.006978305848598663,
+      0.005623413251903491,
+      0.004531583637600818,
+      0.003651741272548377,
+      0.0029427271762092816,
+      0.002371373705661655,
+      0.0019109529749704406,
+      0.0015399265260594918,
+      0.0012409377607517195,
+      0.001,
+      0.0008058421877614819,
+      0.0006493816315762112,
+      0.0005232991146814947,
+      0.0004216965034285823,
+      0.0003398208328942559,
+      0.00027384196342643616,
+      0.00022067340690845895,
+      0.00017782794100389227,
+      0.00014330125702369627,
+      0.00011547819846894582,
+      9.30572040929699e-05,
+      7.498942093324559e-05,
+      6.0429639023813276e-05,
+      4.869675251658631e-05,
+      3.9241897584845363e-05,
+      3.1622776601683795e-05,
+      2.5482967479793468e-05,
+      2.0535250264571462e-05,
+      1.6548170999431813e-05,
+      1.333521432163324e-05,
+      1.0746078283213174e-05,
+      8.659643233600654e-06,
+      6.978305848598664e-06,
+      5.623413251903491e-06,
+      4.531583637600818e-06,
+      3.651741272548377e-06,
+      2.942727176209282e-06,
+      2.3713737056616552e-06,
+      1.9109529749704404e-06,
+      1.539926526059492e-06,
+      1.2409377607517195e-06
+    ],
+    "has_q_norm": true,
+    "has_k_norm": true,
+    "vocab_size": 151936,
+    "max_position_embeddings": 40960,
+    "model_id": "Qwen/Qwen3-0.6B",
+    "qk_norm_probe_method": "meta-instantiated Qwen3Attention",
+    "inv_freq_crosscheck": {
+      "ran": true,
+      "match": true,
+      "source": "Qwen3RotaryEmbedding",
+      "attempts": [],
+      "their_dtype": "torch.float32",
+      "their_eps": 1.1920928955078125e-07,
+      "max_rel_dev": 8.205245697322904e-08,
+      "max_dev_ulp": 0.6883058969852849,
+      "ulp_budget": 4.0,
+      "rope_type": "default",
+      "attention_scaling": 1.0
+    }
+  },
+  "rope_comparison": {
+    "theta_match": true,
+    "length_match": false,
+    "n_inv_freq": {
+      "sharer": 32,
+      "receiver": 64
+    },
+    "elementwise_match": null,
+    "elementwise_max_rel_dev": null,
+    "nesting": {
+      "coarse": "sharer",
+      "fine": "receiver",
+      "stride": 2,
+      "holds": true,
+      "max_rel_dev": 0.0
+    },
+    "range_span": {
+      "sharer": [
+        1.0,
+        1.539926526059492e-06
+      ],
+      "receiver": [
+        1.0,
+        1.2409377607517195e-06
+      ]
+    }
+  },
+  "concat_widths": {
+    "sharer_kv_width": 128,
+    "receiver_kv_width": 1024,
+    "concat_width": 1152,
+    "sharer_share": 0.1111111111111111,
+    "receiver_share": 0.8888888888888888
+  },
+  "layer_counts": {
+    "n_source_layers": 24,
+    "n_target_layers": 28
+  },
+  "layer_alignment": {
+    "strategy": "terminal",
+    "target_to_source": [
+      null,
+      null,
+      null,
+      null,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+    ],
+    "pairs": [
+      [
+        4,
+        0
+      ],
+      [
+        5,
+        1
+      ],
+      [
+        6,
+        2
+      ],
+      [
+        7,
+        3
+      ],
+      [
+        8,
+        4
+      ],
+      [
+        9,
+        5
+      ],
+      [
+        10,
+        6
+      ],
+      [
+        11,
+        7
+      ],
+      [
+        12,
+        8
+      ],
+      [
+        13,
+        9
+      ],
+      [
+        14,
+        10
+      ],
+      [
+        15,
+        11
+      ],
+      [
+        16,
+        12
+      ],
+      [
+        17,
+        13
+      ],
+      [
+        18,
+        14
+      ],
+      [
+        19,
+        15
+      ],
+      [
+        20,
+        16
+      ],
+      [
+        21,
+        17
+      ],
+      [
+        22,
+        18
+      ],
+      [
+        23,
+        19
+      ],
+      [
+        24,
+        20
+      ],
+      [
+        25,
+        21
+      ],
+      [
+        26,
+        22
+      ],
+      [
+        27,
+        23
+      ]
+    ],
+    "n_pairs": 24,
+    "unpaired_targets": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "tokenizers": {
+    "probe_strings": [
+      "The capital of France is Paris.",
+      "Which of the following is correct? A. 2500  B. 3700",
+      "cache-to-cache"
+    ],
+    "per_model": {
+      "sharer": {
+        "class": "Qwen2Tokenizer",
+        "vocab_size": 151643,
+        "len_tokenizer": 151665,
+        "bos_token_id": null,
+        "eos_token_id": 151645,
+        "pad_token_id": 151643,
+        "probe_ids": {
+          "The capital of France is Paris.": [
+            785,
+            6722,
+            315,
+            9625,
+            374,
+            12095,
+            13
+          ],
+          "Which of the following is correct? A. 2500  B. 3700": [
+            23085,
+            315,
+            279,
+            2701,
+            374,
+            4396,
+            30,
+            362,
+            13,
+            220,
+            17,
+            20,
+            15,
+            15,
+            220,
+            425,
+            13,
+            220,
+            18,
+            22,
+            15,
+            15
+          ],
+          "cache-to-cache": [
+            9360,
+            4686,
+            36680
+          ]
+        }
+      },
+      "receiver": {
+        "class": "Qwen2Tokenizer",
+        "vocab_size": 151643,
+        "len_tokenizer": 151669,
+        "bos_token_id": null,
+        "eos_token_id": 151645,
+        "pad_token_id": 151643,
+        "probe_ids": {
+          "The capital of France is Paris.": [
+            785,
+            6722,
+            315,
+            9625,
+            374,
+            12095,
+            13
+          ],
+          "Which of the following is correct? A. 2500  B. 3700": [
+            23085,
+            315,
+            279,
+            2701,
+            374,
+            4396,
+            30,
+            362,
+            13,
+            220,
+            17,
+            20,
+            15,
+            15,
+            220,
+            425,
+            13,
+            220,
+            18,
+            22,
+            15,
+            15
+          ],
+          "cache-to-cache": [
+            9360,
+            4686,
+            36680
+          ]
+        }
+      }
+    },
+    "probe_ids_identical": true,
+    "vocab_size_identical": true,
+    "align_tokens_in_scope": false
+  },
+  "config_provenance": {
+    "transformers_version": "5.14.1",
+    "sharer": {
+      "ran": true,
+      "source": "/home/fenghuang/.cache/huggingface/hub/models--Qwen--Qwen2.5-0.5B-Instruct/snapshots/7ae557604adf67be50417f59c2c2f167def9a775/config.json",
+      "present": {
+        "rope_theta": true,
+        "rope_parameters": false,
+        "rope_scaling": false,
+        "head_dim": false,
+        "partial_rotary_factor": false,
+        "num_key_value_heads": true,
+        "num_attention_heads": true,
+        "num_hidden_layers": true,
+        "hidden_size": true,
+        "vocab_size": true
+      },
+      "raw_values": {
+        "rope_theta": 1000000.0,
+        "num_key_value_heads": 2,
+        "num_attention_heads": 14,
+        "num_hidden_layers": 24,
+        "hidden_size": 896,
+        "vocab_size": 151936
+      },
+      "transformers_version_in_file": "4.43.1"
+    },
+    "receiver": {
+      "ran": true,
+      "source": "/home/fenghuang/.cache/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca/config.json",
+      "present": {
+        "rope_theta": true,
+        "rope_parameters": false,
+        "rope_scaling": true,
+        "head_dim": true,
+        "partial_rotary_factor": false,
+        "num_key_value_heads": true,
+        "num_attention_heads": true,
+        "num_hidden_layers": true,
+        "hidden_size": true,
+        "vocab_size": true
+      },
+      "raw_values": {
+        "rope_theta": 1000000,
+        "rope_scaling": null,
+        "head_dim": 128,
+        "num_key_value_heads": 8,
+        "num_attention_heads": 16,
+        "num_hidden_layers": 28,
+        "hidden_size": 1024,
+        "vocab_size": 151936
+      },
+      "transformers_version_in_file": "4.51.0"
+    }
+  }
+}
