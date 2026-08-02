@@ -1,8 +1,9 @@
 """A projection from the Sharer's cache to the Receiver's, written from scratch.
 
-Checkpoints exist upstream for exactly this model pair; 
-using them would answer whether the mechanism works and not whether it is understood, 
-which is the question this repository was built to ask.
+No I/O, no model loading, no pretrained weights. Checkpoints exist upstream
+for exactly this model pair; using them would answer whether the mechanism
+works and not whether it is understood, which is the question this repository
+was built to ask.
 
 The bias is load-bearing and not an implementation detail. The number this
 projection is graded against is the error of the best constant predictor, and

@@ -1,20 +1,16 @@
-"""Both caches at the shapes the contract predicts, and a null worth reading.
+"""Both caches at the contract shapes, split by article, with a null per split.
 
 Silent on success, exit 0.
 
-The rehearsal builds a Qwen2 and a Qwen3 from config objects, at the layer
-and head counts the real pair has, and runs the whole measurement on them.
-Random weights change every magnitude and no part of the structure, so a
-shape that is wrong here is wrong there, and a null that is negative here
-would be negative there.
+The rehearsal builds a Qwen2 and a Qwen3 from config objects at the head
+geometry the real pair has and runs the two phase capture on them. Random
+weights change every magnitude and no part of the structure.
 
-Thresholds fixed before the first run against real weights:
-
-  the per channel null is the strictest of the three constant predictors,
-  so it can never exceed the global mean null, which can never exceed the
-  zero null. Those orderings are arithmetic and hold whatever the weights
-  are. They are asserted rather than assumed because a variance computed by
-  cancellation in float32 can come out negative and still look plausible.
+One gate here belongs to Tier 3 in spirit and sits here in practice: the
+training split has to hold enough positions for the projection that will be
+fitted on it. Discovering that after training has run wastes the run and,
+worse, produces a held out failure that cannot be told apart from there
+being no signal.
 """
 
 from __future__ import annotations
@@ -29,11 +25,22 @@ import torch
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+from c2c.projection import CacheProjection
+
 NULL_PATH = REPO_ROOT / "results" / "geometric_null.json"
 CONTRACTS_PATH = REPO_ROOT / "results" / "contracts.json"
+CACHE_ROOT = REPO_ROOT / "results" / "caches"
+
+SPLITS = ("train", "held_out")
+KINDS = ("keys", "values")
+
+# Must match scripts/train_projection.py. A mismatch would let this gate pass
+# a corpus the training then starves on.
+PROJECTION = {"depth": 2, "hidden": 256, "activation": "gelu"}
+MIN_POSITIONS_PER_PARAMETER = 50.0
 
 
-def _capture_module():
+def _capture():
     path = REPO_ROOT / "scripts" / "capture_dual_cache.py"
     spec = importlib.util.spec_from_file_location("_capture_dual_cache", path)
     module = importlib.util.module_from_spec(spec)
@@ -51,181 +58,223 @@ def load(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-# -------------------------------------------------------------------------
-# pure
+# ---------------------------------------------------------------- pure
 
 
-def test_channel_stats_recovers_a_known_variance():
-    stats = _capture_module().ChannelStats(4)
+def test_articles_are_split_at_titles_not_at_sections():
+    lines = [" = Alpha = \n", "a\n", " = = Section = = \n", "still a\n",
+             " = Beta = \n", "b\n"]
+    articles = list(_capture().iter_articles(lines))
+    assert len(articles) == 2
+    assert "= = Section = =" in articles[0]
+
+
+def test_chunking_drops_the_short_tail():
+    chunk = _capture().chunk_ids
+    assert [len(c) for c in chunk(list(range(300)), 128, 32)] == [128, 128, 44]
+    assert [len(c) for c in chunk(list(range(150)), 128, 32)] == [128]
+    assert chunk(list(range(20)), 128, 32) == []
+
+
+def test_no_article_appears_in_both_splits():
+    """A held out chunk from a training article is not held out."""
+    assign = _capture().assign_splits
+    articles = [(i, [list(range(64))] * 3) for i in range(40)]
+    result = assign(articles, {"train": 400, "held_out": 200}, 1234)
+    assert not set(result["train"]["articles"]) & set(result["held_out"]["articles"])
+    assert result["train"]["n_tokens"] >= 400
+    assert result["held_out"]["n_tokens"] >= 200
+
+
+def test_split_refuses_when_the_dataset_runs_out():
+    assign = _capture().assign_splits
+    try:
+        assign([(0, [list(range(64))])], {"train": 4000, "held_out": 2000}, 1)
+    except ValueError:
+        return
+    raise AssertionError("filled a budget the dataset could not cover")
+
+
+def test_channel_report_recovers_a_known_variance():
     torch.manual_seed(0)
-    tensor = torch.randn(1, 2, 500, 2) * 3.0 + 7.0
-    stats.add(tensor)
-    report = stats.report()
-
-    flat = tensor.permute(0, 2, 1, 3).reshape(500, 4).to(torch.float64)
-    expected = flat.var(dim=0, unbiased=False).mean()
-    assert abs(report["null_mse_per_channel_mean"] - float(expected)) < 1e-9
-    assert report["n_positions"] == 500 and report["n_channels"] == 4
+    stacked = torch.randn(500, 4) * 3.0 + 7.0
+    report = _capture().channel_report(stacked)
+    expected = float(stacked.to(torch.float64).var(dim=0, unbiased=False).mean())
+    assert abs(report["null_mse_per_channel_mean"] - expected) < 1e-9
+    assert 0.0 <= report["null_mse_per_channel_mean"] <= report["null_mse_global_mean"] + 1e-9
+    assert report["null_mse_global_mean"] <= report["null_mse_zero"] + 1e-9
 
 
-def test_constant_predictors_are_ordered_by_strictness():
-    stats = _capture_module().ChannelStats(6)
-    torch.manual_seed(1)
-    stats.add(torch.randn(1, 3, 200, 2) * 2.0 + 5.0)
-    r = stats.report()
-    assert 0.0 <= r["null_mse_per_channel_mean"] <= r["null_mse_global_mean"] + 1e-9
-    assert r["null_mse_global_mean"] <= r["null_mse_zero"] + 1e-9
+def test_channel_report_refuses_a_single_position():
+    for bad in (torch.randn(1, 4), torch.randn(3, 4, 5)):
+        try:
+            _capture().channel_report(bad)
+        except ValueError:
+            continue
+        raise AssertionError("reported statistics it could not compute")
 
 
-def test_channel_stats_refuses_a_variance_of_one_sample():
-    stats = _capture_module().ChannelStats(4)
-    stats.add(torch.randn(1, 2, 1, 2))
-    try:
-        stats.report()
-    except ValueError:
-        return
-    raise AssertionError("reported a variance from a single position")
+# ---------------------------------------------------------------- rehearsal
 
 
-def test_channel_stats_rejects_the_wrong_width():
-    stats = _capture_module().ChannelStats(8)
-    try:
-        stats.add(torch.randn(1, 2, 5, 2))
-    except ValueError:
-        return
-    raise AssertionError("accepted a tensor of the wrong channel count")
-
-
-def test_tokenization_comparison_reports_both_outcomes():
-    compare = _capture_module().compare_tokenizations
-    same = compare([[1, 2, 3], [4, 5]], [[1, 2, 3], [4, 5]])
-    assert same["identical"] is True and same["n_tokens"] == 5
-    differ = compare([[1, 2, 3]], [[1, 2, 4]])
-    assert differ["identical"] is False and differ["mismatches"][0]["index"] == 0
-
-
-# -------------------------------------------------------------------------
-# rehearsal
-
-
-def test_geometry_rehearsal_on_models_with_no_checkpoint():
+def test_capture_rehearsal_on_models_with_no_checkpoint():
+    import shutil
     from transformers import (
         Qwen2Config, Qwen2ForCausalLM, Qwen3Config, Qwen3ForCausalLM,
     )
 
-    torch.manual_seed(0)
-    rope = {"rope_type": "default", "rope_theta": 1000000.0}
-    sharer_config = Qwen2Config(
-        vocab_size=512, hidden_size=112, intermediate_size=224,
-        num_hidden_layers=24, num_attention_heads=14, num_key_value_heads=2,
-        max_position_embeddings=512, rope_parameters=rope,
-    )
-    receiver_config = Qwen3Config(
-        vocab_size=512, hidden_size=128, intermediate_size=256,
-        num_hidden_layers=28, num_attention_heads=16, num_key_value_heads=8,
-        head_dim=32, max_position_embeddings=512, rope_parameters=rope,
-    )
-    for config in (sharer_config, receiver_config):
-        config._attn_implementation = "eager"
+    capture = _capture()
+    scratch = REPO_ROOT / "results" / "_rehearsal_caches"
+    original_root, original_flush = capture.CACHE_ROOT, capture.FLUSH_EVERY_CHUNKS
+    capture.CACHE_ROOT, capture.FLUSH_EVERY_CHUNKS = scratch, 3
+    shutil.rmtree(scratch, ignore_errors=True)
+    try:
+        torch.manual_seed(0)
+        rope = {"rope_type": "default", "rope_theta": 1000000.0}
+        sharer = Qwen2ForCausalLM(Qwen2Config(
+            vocab_size=512, hidden_size=128, intermediate_size=192,
+            num_hidden_layers=24, num_attention_heads=14, num_key_value_heads=2,
+            head_dim=64, max_position_embeddings=512, rope_parameters=rope,
+            _attn_implementation="eager")).eval()
+        receiver = Qwen3ForCausalLM(Qwen3Config(
+            vocab_size=512, hidden_size=128, intermediate_size=192,
+            num_hidden_layers=28, num_attention_heads=16, num_key_value_heads=8,
+            head_dim=128, max_position_embeddings=512, rope_parameters=rope,
+            _attn_implementation="eager")).eval()
 
-    sharer = Qwen2ForCausalLM(sharer_config).eval()
-    receiver = Qwen3ForCausalLM(receiver_config).eval()
-
-    ids = [torch.randint(0, 512, (1, n)) for n in (23, 31, 19, 27)]
-    result = _capture_module().measure_geometry(sharer, receiver, ids)
-
-    assert result["cache_shapes"]["sharer"][0] == 24
-    assert result["cache_shapes"]["sharer"][2] == 2
-    assert result["cache_shapes"]["receiver"][0] == 28
-    assert result["cache_shapes"]["receiver"][2] == 8
-    assert result["cache_shapes"]["receiver"][4] == 32
-
-    assert result["null"]["unpaired_target_layers"] == [0, 1, 2, 3]
-    assert len(result["null"]["paired_target_layers"]) == 24
-
-    for role in ("sharer", "receiver"):
-        for kind in ("keys", "values"):
-            series = result["per_layer"][role][kind]
-            assert len(series) == result["layer_counts"][role]
-            for entry in series:
-                assert entry["null_mse_per_channel_mean"] >= 0.0
-                assert (
-                    entry["null_mse_per_channel_mean"]
-                    <= entry["null_mse_global_mean"] + 1e-9
+        chunks = {
+            "train": [torch.randint(0, 512, (96,)).tolist() for _ in range(6)],
+            "held_out": [torch.randint(0, 512, (96,)).tolist() for _ in range(3)],
+        }
+        for role, model in (("sharer", sharer), ("receiver", receiver)):
+            for split in SPLITS:
+                shape = capture.capture_role(model, role, split, chunks[split])
+                reports = capture.finalise(
+                    split, role, model.config.num_hidden_layers
                 )
-                assert entry["null_mse_global_mean"] <= entry["null_mse_zero"] + 1e-9
-                assert entry["n_positions"] == 100
+                assert len(reports["keys"]) == model.config.num_hidden_layers
+                stored = torch.load(
+                    scratch / split / f"{role}_keys_layer00.pt",
+                    map_location="cpu",
+                )
+                assert stored.shape[0] == reports["keys"][0]["n_positions"], (
+                    "the statistics and the stored file disagree on how many "
+                    "positions there are"
+                )
+                assert stored.shape[1] == reports["keys"][0]["n_channels"]
+        assert shape[0] == 28 and shape[2] == 8 and shape[4] == 128
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+        capture.CACHE_ROOT, capture.FLUSH_EVERY_CHUNKS = original_root, original_flush
 
-    for kind in ("keys", "values"):
-        assert result["null"]["aggregate_paired_target_layers"][kind] > 0.0
 
-
-# -------------------------------------------------------------------------
-# against the real run
+# ---------------------------------------------------------- against the run
 
 
 def test_shapes_match_the_contract_not_literals():
     result = load(NULL_PATH)
     contract = load(CONTRACTS_PATH)
-
     for role in ("sharer", "receiver"):
         n_layers, batch, n_kv_heads, positions, head_dim = result["cache_shapes"][role]
         assert n_layers == contract[role]["n_layers"], role
-        assert n_kv_heads == contract[role]["n_kv_heads"], (
-            f"{role} cache holds {n_kv_heads} key-value heads, contract says "
-            f"{contract[role]['n_kv_heads']}"
-        )
+        assert n_kv_heads == contract[role]["n_kv_heads"], role
         assert head_dim == contract[role]["head_dim"], role
         assert n_kv_heads * head_dim == contract[role]["kv_width"], role
-        assert result["per_layer"][role]["keys"][0]["n_channels"] == (
-            contract[role]["kv_width"]
-        ), role
+        for split in SPLITS:
+            entry = result["splits"][split][role]["keys"][0]
+            assert entry["n_channels"] == contract[role]["kv_width"], (role, split)
+
+
+def test_both_splits_exist_and_are_disjoint_by_article():
+    result = load(NULL_PATH)
+    assert set(SPLITS) <= set(result["splits"])
+    assert result["corpus"]["split_by"] == "article"
+    for split in SPLITS:
+        assert result["splits"][split]["n_articles"] > 0, split
+        assert result["splits"][split]["n_positions"] > 0, split
+
+
+def test_the_gate_is_graded_on_the_held_out_split():
+    """In sample comparison passes on uninformative input at every corpus
+    size, so the file has to say which split grades."""
+    result = load(NULL_PATH)
+    assert result["null"]["graded_on"] == "held_out"
 
 
 def test_both_tokenizers_saw_the_same_tokens():
-    """The Tier 0 caveat, made operational.
-
-    The two vocabularies agree on ordinary strings and differ by four tokens
-    that belong to the Receiver. If one of those ever reaches the Sharer the
-    two id streams diverge, the positions stop corresponding, and every
-    number below is computed on a pair of caches that describe different
-    text.
-    """
     result = load(NULL_PATH)
     tokenization = result["tokenization"]
     assert tokenization["identical"] is True, tokenization["mismatches"]
-    assert tokenization["n_tokens"] > 0
 
 
-def test_the_null_is_ordered_and_positive():
+def test_the_null_is_ordered_and_positive_in_both_splits():
     result = load(NULL_PATH)
-    for role in ("sharer", "receiver"):
-        for kind in ("keys", "values"):
-            for index, entry in enumerate(result["per_layer"][role][kind]):
-                where = f"{role}.{kind}.layer{index}"
-                assert entry["null_mse_per_channel_mean"] > 0.0, where
-                assert (
-                    entry["null_mse_per_channel_mean"]
-                    <= entry["null_mse_global_mean"] + 1e-9
-                ), where
-                assert entry["null_mse_global_mean"] <= entry["null_mse_zero"] + 1e-9, where
+    for split in SPLITS:
+        for role in ("sharer", "receiver"):
+            for kind in KINDS:
+                for index, entry in enumerate(result["splits"][split][role][kind]):
+                    where = f"{split}.{role}.{kind}.layer{index}"
+                    assert entry["null_mse_per_channel_mean"] > 0.0, where
+                    assert (entry["null_mse_per_channel_mean"]
+                            <= entry["null_mse_global_mean"] + 1e-9), where
+                    assert (entry["null_mse_global_mean"]
+                            <= entry["null_mse_zero"] + 1e-9), where
 
 
-def test_the_aggregate_null_covers_only_layers_that_can_be_trained():
-    """Unpaired target layers have no source, so nothing will be trained for
-    them and they must not move the number the training is graded against."""
+def test_the_aggregate_covers_only_layers_that_can_be_trained():
     result = load(NULL_PATH)
     contract = load(CONTRACTS_PATH)
     null = result["null"]
+    assert len(null["paired_target_layers"]) == min(
+        contract["sharer"]["n_layers"], contract["receiver"]["n_layers"]
+    )
+    assert null["paired_target_layers"][-1] == contract["receiver"]["n_layers"] - 1
+    assert not set(null["paired_target_layers"]) & set(null["unpaired_target_layers"])
 
-    n_source = contract["sharer"]["n_layers"]
-    n_target = contract["receiver"]["n_layers"]
-    assert len(null["paired_target_layers"]) == min(n_source, n_target)
-    assert null["paired_target_layers"][-1] == n_target - 1
-    assert set(null["paired_target_layers"]) & set(null["unpaired_target_layers"]) == set()
 
-    for kind in ("keys", "values"):
-        assert null["aggregate_paired_target_layers"][kind] > 0.0
+def test_the_cache_tensors_the_training_reads_exist_and_match():
+    result = load(NULL_PATH)
+    contract = load(CONTRACTS_PATH)
+    for split in SPLITS:
+        for role in ("sharer", "receiver"):
+            n_layers = contract[role]["n_layers"]
+            for kind in KINDS:
+                for layer in range(n_layers):
+                    path = CACHE_ROOT / split / f"{role}_{kind}_layer{layer:02d}.pt"
+                    assert path.exists(), f"missing {path.relative_to(REPO_ROOT)}"
+                entry = result["splits"][split][role][kind][0]
+                stored = torch.load(
+                    CACHE_ROOT / split / f"{role}_{kind}_layer00.pt",
+                    map_location="cpu",
+                )
+                assert list(stored.shape) == [
+                    entry["n_positions"], entry["n_channels"]
+                ], f"{split}/{role}/{kind}: file and statistics disagree"
+
+
+def test_the_training_split_can_support_the_projection_that_reads_it():
+    """Sized here, not discovered after the training has run.
+
+    Below this ratio a held out failure cannot be told apart from not having
+    enough data to find the signal, and the run would produce a number that
+    looks like a finding.
+    """
+    result = load(NULL_PATH)
+    contract = load(CONTRACTS_PATH)
+    projection = CacheProjection(
+        contract["sharer"]["n_kv_heads"], contract["sharer"]["head_dim"],
+        contract["receiver"]["n_kv_heads"], contract["receiver"]["head_dim"],
+        **PROJECTION,
+    )
+    per_parameter = projection.n_parameters_per_output_channel()
+    positions = result["splits"]["train"]["n_positions"]
+    ratio = positions / per_parameter
+    assert ratio >= MIN_POSITIONS_PER_PARAMETER, (
+        f"{positions} training positions is {ratio:.1f} per parameter for a "
+        f"projection costing {per_parameter:.1f} per output channel. Raise "
+        f"TRAIN_TOKEN_BUDGET to at least "
+        f"{int(MIN_POSITIONS_PER_PARAMETER * per_parameter)}."
+    )
 
 
 def main():

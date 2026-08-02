@@ -46,6 +46,7 @@ __pycache__/
 sandbox/
 
 # results: json is tracked, tensors and weights are not
+results/caches/
 results/*.pt
 results/*.pth
 results/*.bin

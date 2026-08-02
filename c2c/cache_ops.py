@@ -5,6 +5,8 @@ and leaves the one it was given untouched. That matters more than it looks.
 A forward pass appends to whatever cache it is handed, so a cache reused
 across two conditions is a different object by the time the second one runs,
 and the resulting comparison silently measures nothing.
+
+No I/O, no model loading. Importing the cache class is neither.
 """
 
 from __future__ import annotations
@@ -13,6 +15,8 @@ import torch
 from transformers.cache_utils import DynamicCache
 
 __all__ = [
+    "flatten_heads",
+    "unflatten_heads",
     "cache_tensors",
     "build_cache",
     "clone_cache",
@@ -24,6 +28,38 @@ __all__ = [
 ]
 
 KINDS = ("keys", "values")
+
+
+def flatten_heads(tensor: torch.Tensor) -> torch.Tensor:
+    """[batch, heads, positions, head_dim] to [batch * positions, heads * head_dim].
+
+    One row per position, holding the whole vector a projection has to
+    produce for it. The width is `kv_width` from the contract.
+
+    This convention is defined once because two places need it and they must
+    not drift: the statistics that define the null, and the projection graded
+    against that null. If one of them ordered the channel axis differently
+    the two numbers would still both be finite and nothing would raise.
+    """
+    if tensor.dim() != 4:
+        raise ValueError(f"expected 4 dimensions, got {tuple(tensor.shape)}")
+    batch, heads, positions, head_dim = tensor.shape
+    return tensor.permute(0, 2, 1, 3).reshape(batch * positions, heads * head_dim)
+
+
+def unflatten_heads(
+    flat: torch.Tensor, batch: int, heads: int, head_dim: int
+) -> torch.Tensor:
+    """The exact inverse of flatten_heads."""
+    if flat.dim() != 2:
+        raise ValueError(f"expected 2 dimensions, got {tuple(flat.shape)}")
+    rows, width = flat.shape
+    if width != heads * head_dim:
+        raise ValueError(f"width {width} is not {heads} x {head_dim}")
+    if rows % batch != 0:
+        raise ValueError(f"{rows} rows do not divide into {batch} batches")
+    positions = rows // batch
+    return flat.reshape(batch, positions, heads, head_dim).permute(0, 2, 1, 3)
 
 
 def cache_tensors(cache: DynamicCache) -> list[tuple[torch.Tensor, torch.Tensor]]:

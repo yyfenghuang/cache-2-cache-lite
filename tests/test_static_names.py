@@ -15,6 +15,11 @@ Attribute access compiles to LOAD_ATTR and never appears, so `x.read_text`
 raises nothing here. Imports made inside a function compile to local stores,
 so `import torch` in a function body is a local and never appears either.
 Both are false positives a text scan would produce and this does not.
+
+A module that will not import at all is reported rather than raised. Dying on
+the first broken file hides every other broken file behind it, and the next
+run then finds the second one, which is a round trip per fault. One run
+should show the whole picture.
 """
 
 from __future__ import annotations
@@ -29,7 +34,7 @@ from types import CodeType, ModuleType
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-SEARCH_DIRS = ("c2c_lite", "scripts", "tests")
+SEARCH_DIRS = ("c2c", "scripts", "tests")
 
 SELF = Path(__file__).resolve()
 
@@ -66,20 +71,27 @@ def globals_referenced(code: CodeType) -> set[str]:
     return names
 
 
-def test_every_global_resolves():
+def test_every_module_imports_and_every_global_resolves():
     known_builtins = set(dir(builtins))
     problems = []
 
     for path in python_files():
-        module = load(path)
+        where = path.relative_to(REPO_ROOT)
+        try:
+            module = load(path)
+        except Exception as exc:  # noqa: BLE001
+            problems.append(f"{where}: will not import, {type(exc).__name__}: {exc}")
+            continue
         defined = set(vars(module)) | known_builtins
         source = path.read_text(encoding="utf-8")
         missing = globals_referenced(compile(source, str(path), "exec")) - defined
         for name in sorted(missing):
-            problems.append(f"{path.relative_to(REPO_ROOT)}: undefined global {name}")
+            problems.append(f"{where}: undefined global {name}")
 
     if problems:
-        raise AssertionError("\n  " + "\n  ".join(problems))
+        raise AssertionError(
+            f"{len(problems)} problem(s):\n  " + "\n  ".join(problems)
+        )
 
 
 def main():
