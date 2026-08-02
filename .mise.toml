@@ -2,7 +2,7 @@
 python = "3.11.9"
 
 [tasks.contracts]
-description = "Task for test: KV geometry, rotary ladders, layer and token alignment"
+description = "Tier 0 gate: KV geometry, rotary ladders, layer and token alignment"
 dir = "{{config_root}}"
 run = [
   "python tests/test_static_names.py",
@@ -12,7 +12,7 @@ run = [
 ]
 
 [tasks.substrate]
-description = "Gate an injected cache is read, and position ids are absolute"
+description = "Tier 1 gate: an injected cache is read, and position ids are absolute"
 dir = "{{config_root}}"
 run = [
   "python tests/test_static_names.py",
@@ -40,4 +40,12 @@ run = [
   "python tests/test_projection.py",
   "python scripts/train_projection.py",
   "python tests/test_train.py",
+]
+
+[tasks.parity]
+description = "Probe, not a gate: does the receiver key cache split along the sharer's rotary ladder"
+dir = "{{config_root}}"
+run = [
+  "python tests/test_static_names.py",
+  "python scripts/probe_rotary_parity.py",
 ]
