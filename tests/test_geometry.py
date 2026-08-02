@@ -31,7 +31,7 @@ NULL_PATH = REPO_ROOT / "results" / "geometric_null.json"
 CONTRACTS_PATH = REPO_ROOT / "results" / "contracts.json"
 CACHE_ROOT = REPO_ROOT / "results" / "caches"
 
-SPLITS = ("train", "held_out")
+SPLITS = ("train", "validation", "held_out")
 KINDS = ("keys", "values")
 
 # Must match scripts/train_projection.py. A mismatch would let this gate pass
@@ -194,11 +194,15 @@ def test_both_splits_exist_and_are_disjoint_by_article():
         assert result["splits"][split]["n_positions"] > 0, split
 
 
-def test_the_gate_is_graded_on_the_held_out_split():
+def test_the_file_says_which_split_grades_and_which_one_selects():
     """In sample comparison passes on uninformative input at every corpus
-    size, so the file has to say which split grades."""
+    size, so the file has to say which split grades. And the epoch has to be
+    chosen somewhere that is not the split doing the grading, or the number
+    reported was tuned on the data it is reported against."""
     result = load(NULL_PATH)
     assert result["null"]["graded_on"] == "held_out"
+    assert result["null"]["epoch_selected_on"] == "validation"
+    assert result["null"]["graded_on"] != result["null"]["epoch_selected_on"]
 
 
 def test_both_tokenizers_saw_the_same_tokens():

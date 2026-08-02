@@ -82,6 +82,14 @@ DATASET_SPLIT = "train"
 # roughly 50 a held out failure cannot be told apart from not having enough
 # data to find the signal.
 TRAIN_TOKEN_BUDGET = 16000
+
+# Early stopping needs somewhere to look that is not the split doing the
+# grading. Choosing the epoch by held out loss and then reporting that loss
+# grades the projection on data it was tuned against, and the first run
+# showed the choice is not cosmetic: four value layers moved from 0.70 to
+# above 1.0 between their best epoch and their last one.
+VALIDATION_TOKEN_BUDGET = 4000
+
 HELD_OUT_TOKEN_BUDGET = 6000
 
 # Every chunk is prefilled on its own, so positions restart at zero and the
@@ -104,7 +112,7 @@ ATTN_IMPLEMENTATION = "eager"
 SPLIT_SEED = 1234
 FLUSH_EVERY_CHUNKS = 8
 
-SPLITS = ("train", "held_out")
+SPLITS = ("train", "validation", "held_out")
 KINDS = ("keys", "values")
 ROLES = ("sharer", "receiver")
 
@@ -353,7 +361,11 @@ def main() -> None:
 
     assigned = assign_splits(
         articles,
-        {"train": TRAIN_TOKEN_BUDGET, "held_out": HELD_OUT_TOKEN_BUDGET},
+        {
+            "train": TRAIN_TOKEN_BUDGET,
+            "validation": VALIDATION_TOKEN_BUDGET,
+            "held_out": HELD_OUT_TOKEN_BUDGET,
+        },
         SPLIT_SEED,
     )
 
@@ -396,6 +408,7 @@ def main() -> None:
             "definition": "mean squared error of the best constant predictor, "
                           "one mean per channel, channels are n_kv_heads x head_dim",
             "graded_on": "held_out",
+            "epoch_selected_on": "validation",
             "aggregate_all_target_layers": aggregate(
                 splits["held_out"]["receiver"], range(n_target)),
             "aggregate_paired_target_layers": aggregate(
@@ -409,6 +422,7 @@ def main() -> None:
         "corpus": {
             "dataset": DATASET, "config": DATASET_CONFIG, "split": DATASET_SPLIT,
             "train_token_budget": TRAIN_TOKEN_BUDGET,
+            "validation_token_budget": VALIDATION_TOKEN_BUDGET,
             "held_out_token_budget": HELD_OUT_TOKEN_BUDGET,
             "max_sequence_tokens": MAX_SEQUENCE_TOKENS,
             "min_sequence_tokens": MIN_SEQUENCE_TOKENS,

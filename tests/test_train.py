@@ -27,6 +27,8 @@ CONTRACTS_PATH = REPO_ROOT / "results" / "contracts.json"
 MAX_RELATIVE_HELD_OUT = 1.0
 MIN_POSITIONS_PER_PARAMETER = 50.0
 KINDS = ("keys", "values")
+SELECTION_SPLIT = "validation"
+GRADED_SPLIT = "held_out"
 
 
 def load(path):
@@ -102,13 +104,34 @@ def test_the_fit_had_enough_data_to_mean_anything():
         )
 
 
+def test_the_epoch_was_chosen_without_reading_the_graded_split():
+    """Structural, not a matter of care.
+
+    Choosing the epoch by held out loss and then reporting that loss grades
+    the projection on data it was tuned against. The run of 2026-08-02 shows
+    the choice is not cosmetic: four value projections sat near 0.70 at their
+    tenth epoch and above 1.0 at their two hundredth, while training loss
+    fell throughout.
+    """
+    log = load(LOG_PATH)
+    assert log["config"]["selection_split"] == SELECTION_SPLIT
+    assert log["config"]["graded_split"] == GRADED_SPLIT
+    assert SELECTION_SPLIT != GRADED_SPLIT
+    for record in log["per_layer"]:
+        assert record["selection_split"] == SELECTION_SPLIT, record["target_layer"]
+        assert record["selected_epoch"] >= 0
+        assert record["selected_epoch"] <= record["stopped_at_epoch"]
+        assert record["n_validation_positions"] > 0
+
+
 def test_the_in_sample_number_is_recorded_but_not_the_criterion():
-    """Both are written so the gap between them is visible. A large gap is
-    overfitting made legible rather than hidden."""
+    """Three numbers are written so the gaps between them are visible. A
+    large gap is overfitting made legible rather than hidden."""
     log = load(LOG_PATH)
     for record in log["per_layer"]:
-        assert "relative_train" in record
-        assert "relative_held_out" in record
+        for field in ("relative_train", "relative_validation",
+                      "relative_held_out", "relative_best_held_out"):
+            assert field in record, field
         assert record["n_held_out_positions"] > 0
 
 

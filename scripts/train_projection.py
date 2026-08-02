@@ -50,7 +50,7 @@ CONTRACTS_PATH = REPO_ROOT / "results" / "contracts.json"
 CACHE_ROOT = REPO_ROOT / "results" / "caches"
 LOG_PATH = REPO_ROOT / "results" / "train_log.json"
 
-SPLITS = ("train", "held_out")
+SPLITS = ("train", "validation", "held_out")
 KINDS = ("keys", "values")
 
 # Identical for keys and values. The prediction on record compares their
@@ -66,6 +66,13 @@ LEARNING_RATE = 3e-3
 WEIGHT_DECAY = 0.0
 SEED = 1234
 CURVE_EVERY = 10
+
+# Early stopping looks at the validation split and never at the one that
+# grades. Without it the run of 2026-08-02 drove four value projections from
+# a held out relative of about 0.70 at epoch 10 to above 1.0 at epoch 199
+# while their training loss kept falling. Key projections showed none of it
+# under the same configuration, which is a finding rather than a nuisance.
+PATIENCE = 20
 
 # Fixed before the first run. A held out relative loss at or above one means
 # the projection did not beat a constant, whatever its curve did.
@@ -120,13 +127,16 @@ def require_splits(null: dict) -> dict:
     return splits
 
 
-def train_one(
-    x_train, y_train, x_held, y_held, null_train, null_held, generator
-) -> dict:
-    """Fit one projection and report both sides of the comparison."""
+def train_one(x, y, nulls, generator) -> dict:
+    """Fit one projection, stop on validation, report on held out.
+
+    `x` and `y` are dicts keyed by split. The epoch is chosen by validation
+    loss, the parameters at that epoch are restored, and every reported
+    number comes from those parameters. Nothing that selects reads held out.
+    """
     projection = CacheProjection(
-        source_heads=1, source_head_dim=x_train.shape[1],
-        target_heads=1, target_head_dim=y_train.shape[1],
+        source_heads=1, source_head_dim=x["train"].shape[1],
+        target_heads=1, target_head_dim=y["train"].shape[1],
         depth=DEPTH, hidden=HIDDEN,
         **({"activation": ACTIVATION} if DEPTH > 1 else {}),
     )
@@ -134,50 +144,78 @@ def train_one(
         projection.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
     )
     loss_fn = torch.nn.MSELoss()
-    n = x_train.shape[0]
+    n = x["train"].shape[0]
     curve = []
 
-    def evaluate(x, y) -> float:
+    def evaluate(split: str) -> float:
         with torch.no_grad():
-            return float(loss_fn(projection.net(x), y))
+            return float(loss_fn(projection.net(x[split]), y[split]))
 
+    best_validation, best_epoch, best_state, waited = float("inf"), -1, None, 0
+    stopped_at = EPOCHS - 1
     for epoch in range(EPOCHS):
         order = torch.randperm(n, generator=generator)
         for start in range(0, n, BATCH_SIZE):
             index = order[start:start + BATCH_SIZE]
             optimiser.zero_grad()
-            loss = loss_fn(projection.net(x_train[index]), y_train[index])
+            loss = loss_fn(projection.net(x["train"][index]), y["train"][index])
             loss.backward()
             optimiser.step()
+
+        validation = evaluate("validation")
+        if validation < best_validation:
+            best_validation, best_epoch, waited = validation, epoch, 0
+            best_state = {
+                name: tensor.detach().clone()
+                for name, tensor in projection.state_dict().items()
+            }
+        else:
+            waited += 1
+
         if epoch % CURVE_EVERY == 0 or epoch == EPOCHS - 1:
             curve.append({
                 "epoch": epoch,
-                "train": evaluate(x_train, y_train),
-                "held_out": evaluate(x_held, y_held),
+                "train": evaluate("train"),
+                "validation": validation,
+                # Diagnostic only. Recorded so that overfitting is legible.
+                # Selection above never reads it.
+                "held_out": evaluate("held_out"),
             })
 
-    final_train = evaluate(x_train, y_train)
-    final_held = evaluate(x_held, y_held)
+        if waited >= PATIENCE:
+            stopped_at = epoch
+            break
+
+    projection.load_state_dict(best_state)
+    final_train = evaluate("train")
+    final_validation = evaluate("validation")
+    final_held = evaluate("held_out")
     best = min(curve, key=lambda point: point["held_out"])
     per_channel = projection.n_parameters_per_output_channel()
 
     return {
+        "selection_split": "validation",
+        "selected_epoch": best_epoch,
+        "stopped_at_epoch": stopped_at,
         "final_train_mse": final_train,
+        "final_validation_mse": final_validation,
         "final_held_out_mse": final_held,
-        "null_train": null_train,
-        "null_held_out": null_held,
-        "relative_train": final_train / null_train,
-        "relative_held_out": final_held / null_held,
-        # Diagnostics, never the criterion. Selecting the epoch by held out
-        # loss and then reporting that loss would grade the projection on
-        # data it was tuned against. Recorded so that a final number well
-        # above the best one is visible as overfitting rather than read as
-        # the projection's ceiling.
+        "null_train": nulls["train"],
+        "null_validation": nulls["validation"],
+        "null_held_out": nulls["held_out"],
+        "relative_train": final_train / nulls["train"],
+        "relative_validation": final_validation / nulls["validation"],
+        "relative_held_out": final_held / nulls["held_out"],
+        # What selecting on held out would have given. Never the criterion:
+        # it grades the projection on the data it was tuned against. Recorded
+        # so that the distance between it and the reported number shows how
+        # much the honest procedure costs.
         "best_held_out_mse": best["held_out"],
         "best_held_out_epoch": best["epoch"],
-        "relative_best_held_out": best["held_out"] / null_held,
+        "relative_best_held_out": best["held_out"] / nulls["held_out"],
         "n_train_positions": n,
-        "n_held_out_positions": int(x_held.shape[0]),
+        "n_validation_positions": int(x["validation"].shape[0]),
+        "n_held_out_positions": int(x["held_out"].shape[0]),
         "parameters_per_output_channel": per_channel,
         "positions_per_parameter": n / per_channel,
         "curve": curve,
@@ -201,20 +239,16 @@ def main() -> None:
         if source is None:
             continue
         for kind in KINDS:
-            x_train = load_layer("train", "sharer", kind, source)
-            y_train = load_layer("train", "receiver", kind, target)
-            x_held = load_layer("held_out", "sharer", kind, source)
-            y_held = load_layer("held_out", "receiver", kind, target)
-
-            record = train_one(
-                x_train, y_train, x_held, y_held,
-                splits["train"]["receiver"][kind][target]["null_mse_per_channel_mean"],
-                splits["held_out"]["receiver"][kind][target]["null_mse_per_channel_mean"],
-                generator,
-            )
+            x = {s: load_layer(s, "sharer", kind, source) for s in SPLITS}
+            y = {s: load_layer(s, "receiver", kind, target) for s in SPLITS}
+            nulls = {
+                s: splits[s]["receiver"][kind][target]["null_mse_per_channel_mean"]
+                for s in SPLITS
+            }
+            record = train_one(x, y, nulls, generator)
             record.update(target_layer=target, source_layer=source, kind=kind)
             records.append(record)
-            del x_train, y_train, x_held, y_held
+            del x, y
 
     summary = {}
     for kind in KINDS:
@@ -232,6 +266,9 @@ def main() -> None:
             "min_positions_per_parameter": min(
                 r["positions_per_parameter"] for r in subset
             ),
+            "median_selected_epoch": sorted(
+                r["selected_epoch"] for r in subset
+            )[len(subset) // 2],
         }
 
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -246,6 +283,9 @@ def main() -> None:
                     "weight_decay": WEIGHT_DECAY, "seed": SEED,
                     "max_relative_held_out": MAX_RELATIVE_HELD_OUT,
                     "min_positions_per_parameter": MIN_POSITIONS_PER_PARAMETER,
+                    "patience": PATIENCE,
+                    "selection_split": "validation",
+                    "graded_split": "held_out",
                 },
                 "per_layer": records,
                 "summary": summary,
