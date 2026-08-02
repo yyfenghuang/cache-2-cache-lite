@@ -5044,6 +5044,64 @@
       "median_selected_epoch": 118
     }
   },
+  "injection": {
+    "conditions": {
+      "noop": 0.0,
+      "constant": 26.553173065185547,
+      "projected": 23.0294132232666,
+      "corrupted": 36.25773239135742
+    },
+    "ratios": {
+      "noop": 0.0,
+      "constant": 0.8973776274374906,
+      "projected": 0.7782904193347917,
+      "corrupted": 1.2253480135780683
+    },
+    "logit_scale": 29.58974266052246,
+    "threshold": 0.02,
+    "clears_threshold": true,
+    "projected_over_constant": 0.867294208746034,
+    "projected_over_corrupted": 0.6351586738710667,
+    "sequence": {
+      "chunk": 0,
+      "n_total": 256,
+      "n_prefix": 128,
+      "n_new": 128
+    },
+    "replaced_target_layers": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27
+    ],
+    "kept_target_layers": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "source": "results/held_out_ids.json"
+  },
   "torch_version": "2.13.0+cpu",
   "torch_num_threads": 6
 }

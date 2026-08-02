@@ -61,6 +61,11 @@ CACHE_ROOT = REPO_ROOT / "results" / "caches"
 LOG_PATH = REPO_ROOT / "results" / "train_log.json"
 HELD_OUT_IDS_PATH = REPO_ROOT / "results" / "held_out_ids.json"
 
+# The accuracy gate runs under its own command, so the fitted parameters have
+# to outlive this process. Gitignored: they are a local artefact, not a
+# reproducible one, and the file that reproduces them is this script.
+PROJECTIONS_PATH = REPO_ROOT / "results" / "projections.pt"
+
 RECEIVER_ID = "Qwen/Qwen3-0.6B"
 SHARER_ID = "Qwen/Qwen2.5-0.5B-Instruct"
 INJECTION_DTYPE = torch.float32
@@ -362,50 +367,44 @@ def measure_injection(projections, means, mapping, contract) -> dict:
     ).logits
     logit_scale = float(reference.abs().max())
 
-    conditions = {}
+    caches = {
+        "noop": substitute(receiver_cache, {}),
+        "constant": substitute(receiver_cache, constant_cache(
+            receiver_cache, mapping, means, heads, head_dim)),
+        "projected": substitute(receiver_cache, project_cache(
+            sharer_cache, mapping, projections, heads, head_dim)),
+        "corrupted": corrupt_norm_matched(
+            clone_cache(receiver_cache),
+            torch.Generator(device=INJECTION_DEVICE).manual_seed(CORRUPTION_SEED),
+        ),
+    }
 
-    conditions["noop"] = max_abs_difference(
-        _forward(
-            receiver, suffix,
-            substitute(receiver_cache, {}), positions,
-        ).logits,
-        reference,
-    )
-    conditions["constant"] = max_abs_difference(
-        _forward(
-            receiver, suffix,
-            substitute(receiver_cache, constant_cache(
-                receiver_cache, mapping, means, heads, head_dim)),
-            positions,
-        ).logits,
-        reference,
-    )
-    conditions["projected"] = max_abs_difference(
-        _forward(
-            receiver, suffix,
-            substitute(receiver_cache, project_cache(
-                sharer_cache, mapping, projections, heads, head_dim)),
-            positions,
-        ).logits,
-        reference,
-    )
-    conditions["corrupted"] = max_abs_difference(
-        _forward(
-            receiver, suffix,
-            corrupt_norm_matched(
-                clone_cache(receiver_cache),
-                torch.Generator(device=INJECTION_DEVICE).manual_seed(CORRUPTION_SEED),
+    conditions, distribution = {}, {}
+    reference_log = torch.log_softmax(reference, dim=-1)
+    reference_top = reference.argmax(dim=-1)
+    for name, cache in caches.items():
+        logits = _forward(receiver, suffix, cache, positions).logits
+        conditions[name] = max_abs_difference(logits, reference)
+        # A maximum over positions and vocabulary answers "did anything move"
+        # and answers "how close is it" badly, because one entry decides it.
+        # These two read the whole distribution instead.
+        distribution[name] = {
+            "mean_kl_from_baseline": float(torch.nn.functional.kl_div(
+                torch.log_softmax(logits, dim=-1), reference_log,
+                log_target=True, reduction="none",
+            ).sum(dim=-1).mean()),
+            "top1_agreement": float(
+                (logits.argmax(dim=-1) == reference_top).to(torch.float64).mean()
             ),
-            positions,
-        ).logits,
-        reference,
-    )
+        }
+        del logits
     del receiver
 
     ratios = {name: value / logit_scale for name, value in conditions.items()}
     return {
         "conditions": conditions,
         "ratios": ratios,
+        "distribution": distribution,
         "logit_scale": logit_scale,
         "threshold": MIN_DEGRADATION_RATIO,
         "clears_threshold": ratios["projected"] > MIN_DEGRADATION_RATIO,
@@ -481,6 +480,18 @@ def main() -> None:
                 r["selected_epoch"] for r in subset
             )[len(subset) // 2],
         }
+
+    torch.save(
+        {
+            "config": {"depth": DEPTH, "hidden": HIDDEN,
+                       "activation": ACTIVATION if DEPTH > 1 else None},
+            "state_dicts": {
+                f"{target}:{kind}": module.state_dict()
+                for (target, kind), module in projections.items()
+            },
+        },
+        PROJECTIONS_PATH,
+    )
 
     injection = measure_injection(projections, means, mapping, contract)
 

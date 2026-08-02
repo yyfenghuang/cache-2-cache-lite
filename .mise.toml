@@ -42,6 +42,16 @@ run = [
   "python tests/test_train.py",
 ]
 
+[tasks.analysis]
+description = "Tier 3 gate: accuracy, once, with a paired interval and a paired test"
+dir = "{{config_root}}"
+run = [
+  "python tests/test_static_names.py",
+  "python tests/test_projection.py",
+  "python scripts/analysis.py",
+  "python tests/test_analysis.py",
+]
+
 [tasks.parity]
 description = "Probe, not a gate: does the receiver key cache split along the sharer's rotary ladder"
 dir = "{{config_root}}"
