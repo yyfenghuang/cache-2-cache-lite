@@ -52,6 +52,7 @@ one the training reads would not be the one the gate checked.
 from __future__ import annotations
 
 import json
+import platform
 import re
 import shutil
 import sys
@@ -68,7 +69,11 @@ from c2c.cache_ops import cache_tensors, flatten_heads  # noqa: E402
 SHARER_ID = "Qwen/Qwen2.5-0.5B-Instruct"
 RECEIVER_ID = "Qwen/Qwen3-0.6B"
 
-DATASET = "wikitext"
+# The namespace is not optional. Recent huggingface_hub rejects a bare
+# canonical name and requires namespace/name, and wikitext now lives under
+# Salesforce. A dataset id without a namespace resolves to nothing rather
+# than to something wrong, which is the better of the two failures.
+DATASET = "Salesforce/wikitext"
 DATASET_CONFIG = "wikitext-2-raw-v1"
 DATASET_SPLIT = "train"
 
@@ -327,7 +332,16 @@ def main() -> None:
     sharer_tokenizer = AutoTokenizer.from_pretrained(SHARER_ID)
     receiver_tokenizer = AutoTokenizer.from_pretrained(RECEIVER_ID)
 
-    rows = load_dataset(DATASET, DATASET_CONFIG, split=DATASET_SPLIT)["text"]
+    dataset = load_dataset(DATASET, DATASET_CONFIG, split=DATASET_SPLIT)
+    rows = dataset["text"]
+    try:
+        dataset_info = {
+            "config_name": dataset.info.config_name,
+            "version": str(dataset.info.version),
+            "n_rows": dataset.num_rows,
+        }
+    except Exception as exc:  # noqa: BLE001
+        dataset_info = {"recorded": False, "reason": f"{type(exc).__name__}: {exc}"}
     articles = []
     for index, text in enumerate(iter_articles(rows)):
         if not text.strip():
@@ -400,6 +414,7 @@ def main() -> None:
             "min_sequence_tokens": MIN_SEQUENCE_TOKENS,
             "split_by": "article", "split_seed": SPLIT_SEED,
             "positions_seen": f"0 to {MAX_SEQUENCE_TOKENS - 1}",
+            "dataset_info": dataset_info,
         },
         "storage_dtype": str(STORAGE_DTYPE),
         "model_ids": {"sharer": SHARER_ID, "receiver": RECEIVER_ID},
@@ -407,6 +422,11 @@ def main() -> None:
         "attn_implementation": ATTN_IMPLEMENTATION,
         "torch_version": torch.__version__,
         "torch_num_threads": torch.get_num_threads(),
+        # The interpreter is recorded because the repository declares one and
+        # the environment can be running another. A declared version that is
+        # not the version in use is the same failure as a config attribute
+        # that is present and no longer carries the value.
+        "python_version": platform.python_version(),
     }, indent=2) + "\n", encoding="utf-8")
 
 

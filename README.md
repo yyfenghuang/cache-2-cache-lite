@@ -1,15 +1,9 @@
-# c2c-lite
-
-A from-scratch reconstruction of cache-to-cache communication between two
-language models, built to find out whether a KV-cache can be made legible to a
-model from a different generation.
+# cache-2-cache-lite
 
 The mechanism comes from *Cache-to-Cache: Direct Semantic Communication Between
 Large Language Models*, by Tianyu Fu, Zihan Min, Hanling Zhang, Jichao Yan,
 Guohao Dai, Wanli Ouyang, and Yu Wang, published at ICLR 2026
-([arXiv:2510.03215](https://arxiv.org/abs/2510.03215)). The authors span
-Tsinghua University, Infinigence AI, the Chinese University of Hong Kong,
-Shanghai Jiao Tong University, SLAI, and Shanghai AI Laboratory, and the
+([arXiv:2510.03215](https://arxiv.org/abs/2510.03215)). The
 reference implementation is released by Tsinghua's NICS group at
 [thu-nics/C2C](https://github.com/thu-nics/C2C).
 
@@ -29,43 +23,41 @@ survives when those conventions stop being shared.
 ## Why this pair
 
 Qwen2.5-0.5B-Instruct produces the cache. Qwen3-0.6B consumes it. This is the
-smallest pair the original work reports, and the two models are separated by a
-generation rather than by size.
+smallest pair the original work of cache-to-cache reports, and the two models are separated by a generation rather than by size.
 
 Three differences follow from that separation, and each is a candidate reason
 for the transfer to fail.
 
-The receiver normalizes its keys per head before applying rotary embeddings.
+1. The receiver normalizes its keys per head before applying rotary embeddings.
 The sharer has no such step, so its keys arrive with a magnitude distribution
 the receiver's own keys never exhibit at any depth.
 
-Keys carry position and values do not. Position is written into a key as a
+2. Keys carry position and values do not. Position is written into a key as a
 rotation, in a basis fixed by the head dimension. If the two models size their
 heads differently, a transferred key arrives encoded in a basis its reader does
 not use, while a transferred value arrives with no such problem.
 
-The cache is stored at the key-value head count, not the attention head count.
+3. The cache is stored at the key-value head count, not the attention head count.
 The width the projection actually spans is that product, which for these two
 models is expected to differ by close to an order of magnitude rather than the
 fifteen percent their hidden sizes suggest.
 
-None of these is fatal on paper. All three are cheap to check before anything is
-trained, which is what most of this repository does.
+All three are cheap to check before anything is trained, which is what most of this repository does.
 
 ## What would count as an answer
 
 Three outcomes are possible and all three are informative.
 
-A learned map reaches the receiver's cache and the fused system reads better
+1. A learned map reaches the receiver's cache and the fused system reads better
 than the receiver reading alone. The mechanism generalizes past the family it
 was demonstrated in, and the architectural differences above are absorbable.
 
-A learned map reaches the receiver's cache but the fused system reads no better
+2. A learned map reaches the receiver's cache but the fused system reads no better
 than the receiver alone. The geometry is bridgeable and the bridge is not
 useful, which places the difficulty in how transferred information is combined
 rather than in whether it can be carried.
 
-A learned map does not reach the receiver's cache at all. The three differences
+3. A learned map does not reach the receiver's cache at all. The three differences
 above become the candidate explanations, and each was already measured in
 isolation before training began, so the search has somewhere to start.
 
@@ -87,10 +79,10 @@ measurements of geometry and cost only.
 ## Layout
 
 ```
-c2c_lite/     the mechanism, as pure functions: no file I/O, no model loading
-scripts/      everything that touches weights or disk
-tests/        the gates
-results/      contracts and measurements, tracked; tensors and weights, not
+c2c_lite/     the mechanism, as pure functions
+scripts/      everything that touches model weights or disk
+tests/        the compliance gates
+results/      contracts and measurements, tracked; tensors and weights
 assets/       figures
 ```
 
