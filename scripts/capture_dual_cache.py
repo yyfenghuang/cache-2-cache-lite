@@ -119,6 +119,11 @@ ROLES = ("sharer", "receiver")
 RESULTS_PATH = REPO_ROOT / "results" / "geometric_null.json"
 CACHE_ROOT = REPO_ROOT / "results" / "caches"
 
+# The cache tensors are flattened to one row per position and carry no record
+# of which tokens produced them. Anything downstream that has to run a model
+# on held out text, rather than on held out activations, needs the ids back.
+HELD_OUT_IDS_PATH = REPO_ROOT / "results" / "held_out_ids.json"
+
 ARTICLE_TITLE = re.compile(r"^ = [^=].* = $")
 
 
@@ -400,6 +405,15 @@ def main() -> None:
     n_target = shapes["receiver"][0]
     mapping = align_layers(n_source, n_target, strategy="terminal")
     paired = [t for t, s in enumerate(mapping) if s is not None]
+
+    HELD_OUT_IDS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    HELD_OUT_IDS_PATH.write_text(json.dumps({
+        "chunks": assigned["held_out"]["chunks"],
+        "n_chunks": len(assigned["held_out"]["chunks"]),
+        "articles": assigned["held_out"]["articles"],
+        "max_sequence_tokens": MAX_SEQUENCE_TOKENS,
+        "tokenizer": RECEIVER_ID,
+    }, indent=1) + "\n", encoding="utf-8")
 
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     RESULTS_PATH.write_text(json.dumps({

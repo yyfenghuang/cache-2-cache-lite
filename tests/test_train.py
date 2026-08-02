@@ -135,6 +135,48 @@ def test_the_in_sample_number_is_recorded_but_not_the_criterion():
         assert record["n_held_out_positions"] > 0
 
 
+def test_an_injected_projected_cache_moves_the_output():
+    """Gate two, in the units Tier 1 fixed.
+
+    Bit identical output is what a correctly accepted cache produces and also
+    what an ignored one produces, so the no-op alone proves nothing. The
+    corrupted case is repeated here from Tier 1 so the threshold is read
+    against a control measured on the same prefix rather than against a
+    number quoted from another run.
+    """
+    log = load(LOG_PATH)
+    injection = log["injection"]
+    ratios = injection["ratios"]
+
+    assert injection["conditions"]["noop"] == 0.0, (
+        f"substituting the receiver's own tensors moved the logits by "
+        f"{injection['conditions']['noop']}, so the injection path is not "
+        "returning what it was given"
+    )
+    assert ratios["corrupted"] > injection["threshold"], (
+        "the negative control did not degrade, so this prefix cannot "
+        "distinguish a cache being read from one being ignored"
+    )
+    assert ratios["projected"] > injection["threshold"], (
+        f"the projected cache moved the logits by {ratios['projected']:.4g} of "
+        f"their scale, below the {injection['threshold']} Tier 1 fixed"
+    )
+    assert injection["replaced_target_layers"], "nothing was replaced"
+
+
+def test_the_null_was_run_as_a_condition_and_not_only_quoted():
+    """The constant predictor is what a projection that learned nothing would
+    emit. Running it through the same injection path is what makes the
+    projected number comparable to something rather than only to zero."""
+    log = load(LOG_PATH)
+    injection = log["injection"]
+    assert "constant" in injection["conditions"]
+    assert injection["projected_over_constant"] is not None
+    assert set(injection["conditions"]) == {
+        "noop", "constant", "projected", "corrupted"
+    }
+
+
 def main():
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
