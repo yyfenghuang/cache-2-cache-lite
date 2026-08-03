@@ -51,6 +51,9 @@ from c2c.cache_ops import (  # noqa: E402
     flatten_heads, unflatten_heads,
 )
 from c2c.projection import CacheProjection  # noqa: E402
+from c2c.prompting import (  # noqa: E402
+    OPTIONS, build_prompt, option_token_ids,
+)
 
 CONTRACTS_PATH = REPO_ROOT / "results" / "contracts.json"
 PROJECTIONS_PATH = REPO_ROOT / "results" / "projections.pt"
@@ -66,7 +69,6 @@ KEEP_ERROR_TYPE = "ok"
 N_SAMPLES = 500
 SAMPLE_SEED = 1234
 
-OPTIONS = ("A", "B", "C", "D")
 BOOTSTRAP_RESAMPLES = 10000
 BOOTSTRAP_SEED = 20260802
 INTERVAL = 0.95
@@ -83,37 +85,6 @@ def load_json(path: Path) -> dict:
             "not been closed"
         )
     return json.loads(path.read_text(encoding="utf-8"))
-
-
-# ------------------------------------------------------------------ prompt
-
-
-def build_prompt(subject: str, question: str, choices) -> str:
-    topic = subject.replace("_", " ")
-    lines = [
-        f"The following are multiple choice questions (with answers) about {topic}.",
-        "",
-        question.strip(),
-    ]
-    lines += [f"{letter}. {choice}" for letter, choice in zip(OPTIONS, choices)]
-    lines.append("Answer:")
-    return "\n".join(lines)
-
-
-def option_token_ids(tokenizer) -> list[int]:
-    """One token per option, or the comparison is not between like things."""
-    ids = []
-    for letter in OPTIONS:
-        encoded = tokenizer(f" {letter}", add_special_tokens=False)["input_ids"]
-        if len(encoded) != 1:
-            raise SystemExit(
-                f"option {letter!r} encodes to {len(encoded)} tokens, so the "
-                "four scores would not be comparable"
-            )
-        ids.append(int(encoded[0]))
-    if len(set(ids)) != len(ids):
-        raise SystemExit(f"option letters collide on token ids {ids}")
-    return ids
 
 
 # --------------------------------------------------------------- statistics

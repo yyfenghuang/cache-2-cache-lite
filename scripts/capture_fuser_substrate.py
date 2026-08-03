@@ -180,6 +180,7 @@ def measure_fuser_substrate(
         bank.key_fusers[bank.paired_layers[0]].sharer_heads,
         bank.key_fusers[bank.paired_layers[0]].sharer_head_dim,
         hidden=bank.key_fusers[bank.paired_layers[0]].hidden,
+        residual=bank.residual,
     ).train()
     fresh.set_temperature(TEMPERATURE_START)
     generator = torch.Generator(device=device).manual_seed(seed)

@@ -78,3 +78,12 @@ run = [
   "python scripts/capture_fuser_substrate.py",
   "python tests/test_fuser_substrate.py",
 ]
+
+[tasks.fuser]
+description = "Tier 5: train the fuser, and the replacement arm that prices it"
+dir = "{{config_root}}"
+depends = ["fuser-substrate"]
+run = [
+  "python tests/test_static_names.py",
+  "python scripts/train_fuser.py",
+]
