@@ -5057,6 +5057,24 @@
       "projected": 0.7782904193347917,
       "corrupted": 1.2253480135780683
     },
+    "distribution": {
+      "noop": {
+        "mean_kl_from_baseline": 0.0,
+        "top1_agreement": 1.0
+      },
+      "constant": {
+        "mean_kl_from_baseline": 6.036194324493408,
+        "top1_agreement": 0.140625
+      },
+      "projected": {
+        "mean_kl_from_baseline": 0.8737298250198364,
+        "top1_agreement": 0.546875
+      },
+      "corrupted": {
+        "mean_kl_from_baseline": 12.418354988098145,
+        "top1_agreement": 0.0
+      }
+    },
     "logit_scale": 29.58974266052246,
     "threshold": 0.02,
     "clears_threshold": true,

@@ -52,6 +52,14 @@ run = [
   "python tests/test_analysis.py",
 ]
 
+[tasks.shift]
+description = "Probe, not a gate: does a projection fitted on wikitext carry to MMLU"
+dir = "{{config_root}}"
+run = [
+  "python tests/test_static_names.py",
+  "python scripts/probe_distribution_shift.py",
+]
+
 [tasks.parity]
 description = "Probe, not a gate: does the receiver key cache split along the sharer's rotary ladder"
 dir = "{{config_root}}"
