@@ -67,3 +67,14 @@ run = [
   "python tests/test_static_names.py",
   "python scripts/probe_rotary_parity.py",
 ]
+
+[tasks.fuser-substrate]
+description = "Tier 5 gate: a shut fuser is a no-op, and the loss reaches it"
+dir = "{{config_root}}"
+run = [
+  "python tests/test_static_names.py",
+  "python tests/test_cache_ops.py",
+  "python tests/test_fuser.py",
+  "python scripts/capture_fuser_substrate.py",
+  "python tests/test_fuser_substrate.py",
+]

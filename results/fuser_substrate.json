@@ -1,0 +1,64 @@
+{
+  "conditions": {
+    "shut_gate_identity": 0.0,
+    "open_gate_change": 4.946752548217773
+  },
+  "ratios": {
+    "shut_gate_identity": 0.0,
+    "open_gate_change": 0.15495824648688244
+  },
+  "logit_scale": 31.923131942749023,
+  "shut_gate_max_abs_correction": 0.0,
+  "gradient": {
+    "loss": 4.5281147956848145,
+    "n_parameters": 384,
+    "n_missing": 0,
+    "n_zero": 0,
+    "n_nonfinite": 0,
+    "missing": [],
+    "zero": [],
+    "nonfinite": [],
+    "min_norm": 1.100812482945912e-06,
+    "max_norm": 4.487325191497803
+  },
+  "bank": {
+    "n_receiver_layers": 28,
+    "n_sharer_layers": 24,
+    "paired_layers": 24,
+    "unpaired_layers": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "n_trainable": 27242976,
+    "gate_activation_ratio_at_init": 0.0
+  },
+  "receiver_cache_shape": [
+    1,
+    8,
+    33,
+    128
+  ],
+  "sharer_cache_shape": [
+    1,
+    2,
+    33,
+    64
+  ],
+  "sequence": {
+    "n_total": 67,
+    "n_prefix": 33,
+    "n_new": 34
+  },
+  "temperature": 1.0,
+  "seed": 42,
+  "torch_num_threads": 6,
+  "receiver_id": "Qwen/Qwen3-0.6B",
+  "sharer_id": "Qwen/Qwen2.5-0.5B-Instruct",
+  "dtype": "torch.float32",
+  "device": "cpu",
+  "attn_implementation": "eager",
+  "transformers_version": "5.14.1",
+  "torch_version": "2.13.0+cpu"
+}
