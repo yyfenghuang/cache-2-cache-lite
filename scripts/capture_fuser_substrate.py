@@ -172,6 +172,13 @@ def measure_fuser_substrate(
 
     # Gradient census, under the conditions of the first real training step:
     # gates at their shut initialisation, temperature at the annealing start.
+    #
+    # Seeded, because a census whose numbers change between two runs of the
+    # same command cannot be compared against itself. The gate criteria only
+    # ask whether the norms are nonzero and finite, but the norms themselves
+    # are recorded, and a recorded number that is not reproducible invites
+    # being read as one that is.
+    torch.manual_seed(seed)
     fresh = FuserBank(
         bank.n_receiver_layers,
         bank.n_sharer_layers,
@@ -277,6 +284,7 @@ def main() -> None:
         .eval()
     )
 
+    torch.manual_seed(SEED)
     bank = FuserBank(
         receiver_contract["n_layers"],
         sharer_contract["n_layers"],

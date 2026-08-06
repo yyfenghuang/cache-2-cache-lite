@@ -1,16 +1,16 @@
 {
   "conditions": {
     "shut_gate_identity": 0.0,
-    "open_gate_change": 4.946752548217773
+    "open_gate_change": 3.1646504402160645
   },
   "ratios": {
     "shut_gate_identity": 0.0,
-    "open_gate_change": 0.15495824648688244
+    "open_gate_change": 0.09913345739044502
   },
   "logit_scale": 31.923131942749023,
   "shut_gate_max_abs_correction": 0.0,
   "gradient": {
-    "loss": 4.5281147956848145,
+    "loss": 4.469274520874023,
     "n_parameters": 384,
     "n_missing": 0,
     "n_zero": 0,
@@ -18,8 +18,8 @@
     "missing": [],
     "zero": [],
     "nonfinite": [],
-    "min_norm": 1.100812482945912e-06,
-    "max_norm": 4.487325191497803
+    "min_norm": 3.741029388493189e-07,
+    "max_norm": 2.6095643043518066
   },
   "bank": {
     "n_receiver_layers": 28,

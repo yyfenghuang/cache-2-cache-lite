@@ -95,6 +95,7 @@ class CacheFuser(nn.Module):
         *,
         hidden: int = HIDDEN,
         activation: str = "gelu",
+        residual: bool = True,
     ):
         super().__init__()
         for name, count in (
@@ -120,6 +121,7 @@ class CacheFuser(nn.Module):
         self.sharer_width = sharer_heads * sharer_head_dim
         self.joint_width = self.receiver_width + self.sharer_width
         self.hidden = hidden
+        self.residual = residual
 
         self.project = nn.Linear(self.joint_width, hidden, bias=True)
         self.activation = ACTIVATIONS[activation]()
@@ -161,18 +163,14 @@ class CacheFuser(nn.Module):
                 "failure and not a shape to broadcast around"
             )
 
-    def correction(
-        self,
-        receiver: torch.Tensor,
-        sharer: torch.Tensor,
-        generator: torch.Generator | None = None,
+    def modulated(
+        self, receiver: torch.Tensor, sharer: torch.Tensor
     ) -> torch.Tensor:
-        """Everything that is added to the Receiver's cache, gate included.
+        """The module's output before the gate touches it.
 
-        Exposed separately from `forward` because the substrate gate has to
-        assert that this is exactly zero when the gate is shut, and asserting
-        it on the difference of two large tensors would test float32
-        cancellation rather than the gate.
+        This is what the replacement arm hands to the model, and what the
+        residual arm gates and then adds. Both arms read it from here, which
+        is what makes the comparison between them a comparison of one thing.
         """
         self._check(receiver, sharer)
         batch, _, positions, _ = receiver.shape
@@ -187,12 +185,24 @@ class CacheFuser(nn.Module):
         modulated = modulated * weights.unsqueeze(-1)
         modulated = modulated.reshape(-1, self.receiver_width)
 
-        return self.gate(
-            unflatten_heads(
-                modulated, batch, self.receiver_heads, self.receiver_head_dim
-            ),
-            generator,
+        return unflatten_heads(
+            modulated, batch, self.receiver_heads, self.receiver_head_dim
         )
+
+    def correction(
+        self,
+        receiver: torch.Tensor,
+        sharer: torch.Tensor,
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        """Everything that is added to the Receiver's cache, gate included.
+
+        Exposed separately from `forward` because the substrate gate has to
+        assert that this is exactly zero when the gate is shut, and asserting
+        it on the difference of two large tensors would test float32
+        cancellation rather than the gate.
+        """
+        return self.gate(self.modulated(receiver, sharer), generator)
 
     def forward(
         self,
@@ -200,6 +210,19 @@ class CacheFuser(nn.Module):
         sharer: torch.Tensor,
         generator: torch.Generator | None = None,
     ) -> torch.Tensor:
+        """Add, or substitute, depending on which arm this instance is.
+
+        Under `residual=False` the gate is bypassed rather than shut. A shut
+        gate in the replacement arm would hand the model a cache of zeros,
+        which is not the ablation anyone means by replacement. The gate
+        parameters are still constructed, so a checkpoint from either arm has
+        the same shape and the two can be loaded by the same code, but in the
+        replacement arm they receive no gradient and mean nothing.
+
+        The floor does not exist in this arm. That is the point of it.
+        """
+        if not self.residual:
+            return self.modulated(receiver, sharer)
         return receiver + self.correction(receiver, sharer, generator)
 
     def extra_repr(self) -> str:
@@ -232,6 +255,7 @@ class FuserBank(nn.Module):
         *,
         hidden: int = HIDDEN,
         activation: str = "gelu",
+        residual: bool = True,
         strategy: str = "terminal",
     ):
         super().__init__()
@@ -240,6 +264,7 @@ class FuserBank(nn.Module):
         )
         self.n_receiver_layers = n_receiver_layers
         self.n_sharer_layers = n_sharer_layers
+        self.residual = residual
 
         def make() -> nn.ModuleList:
             return nn.ModuleList(
@@ -250,6 +275,7 @@ class FuserBank(nn.Module):
                     sharer_head_dim,
                     hidden=hidden,
                     activation=activation,
+                    residual=residual,
                 )
                 if source is not None
                 else nn.Identity()
@@ -324,6 +350,9 @@ class FuserBank(nn.Module):
         out: list[tuple[torch.Tensor, torch.Tensor]] = []
         for target, source in enumerate(self.mapping):
             if source is None:
+                # Unpaired in both arms. A target layer with no Sharer partner
+                # has nothing to be replaced by, so the replacement arm is a
+                # partial replacement by construction and not by choice.
                 out.append(receiver_pairs[target])
                 continue
             fused = tuple(
