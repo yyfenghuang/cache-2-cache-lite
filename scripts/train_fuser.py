@@ -1,7 +1,7 @@
 """Train the fuser under the objective the residual form entails.
 
-Silent on success. Writes results/fuser_log_<mode>.json and
-results/fuser_<mode>.pt.
+Silent on success. Writes results/fuser_<mode>_<date>_n<N>.json and the
+checkpoint beside it under the same name.
 
 Two arms, one script
 --------------------
@@ -59,6 +59,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from datetime import date
 from pathlib import Path
 
 import torch
@@ -74,7 +75,9 @@ from c2c.cache_ops import (  # noqa: E402
 )
 from c2c.fuser import FuserBank  # noqa: E402
 from c2c.gate import ScalarGate, annealed_temperature  # noqa: E402
-from c2c.prompting import build_prompt, option_token_ids  # noqa: E402
+from c2c.prompting import (  # noqa: E402
+    build_prompt, decompose_loss, option_token_ids,
+)
 
 # ----------------------------------------------------------------- constants
 
@@ -100,7 +103,7 @@ DATASET_SPLIT = "auxiliary_train"
 # produce that number in the log. Raise it once `seconds_per_step` is known,
 # and remember the ladder asks for two runs at whatever size is chosen.
 # Measured on this machine at 1.92 seconds per sample, six threads, float32,
-# eager, from the run recorded in the first fuser_log_fused.json. Training
+# eager, from the first recorded run of this script. Training
 # only, before validation: 2,000 samples is about 1.1 hours per arm and the
 # ladder asks for two arms. The reference figure of 15,000 is about 8 hours
 # per arm and 23 hours for the pair once validation is counted.
@@ -152,6 +155,15 @@ ATTN_IMPLEMENTATION = "eager"
 CONTRACTS_PATH = REPO_ROOT / "results" / "contracts.json"
 SUBSTRATE_PATH = REPO_ROOT / "results" / "fuser_substrate.json"
 RESULTS_DIR = REPO_ROOT / "results"
+
+# Dated and sized, following results/run_<date>_n<N>.json. A run costs hours
+# here, and a fixed filename means the second run destroys the first without
+# asking. One log has already been lost that way. The date and the sample
+# count are the two things that actually distinguish two runs of this script
+# once MODE is in the name, so they are what the name carries.
+RUN_NAME = f"{MODE}_{date.today().isoformat()}_n{N_TRAIN}"
+LOG_PATH = RESULTS_DIR / f"fuser_{RUN_NAME}.json"
+CHECKPOINT_PATH = RESULTS_DIR / f"fuser_{RUN_NAME}.pt"
 
 
 # ------------------------------------------------------------------- sample
@@ -234,6 +246,13 @@ def evaluate(
     because a shut gate pins the fused system to the floor by construction.
     The first run produced five of these and all five were the same number.
 
+    All three report the loss split into the part the grader can see and the
+    part it normalises away. On the first fused run the reported loss fell
+    0.517 while the term that can change an answer accounted for 0.123 of it,
+    with a confidence interval crossing zero. Recording only the total is
+    therefore recording mostly the term that cannot matter, and the split
+    costs nothing: the logits are already computed and it is arithmetic.
+
     `soft=True` keeps the bank in training mode, so the gates are relaxed
     samples and the fuser contributes at partial strength. This is the only
     view that moves before a gate opens, and it is what separates "the
@@ -248,7 +267,9 @@ def evaluate(
         bank.train() if soft else bank.eval()
     generator = torch.Generator(device=DEVICE).manual_seed(seed) if soft else None
 
-    total_loss, n_correct = 0.0, 0
+    terms = ("full", "four_way", "letter_mass", "mass_on_letters")
+    totals = dict.fromkeys(terms, 0.0)
+    n_correct = 0
     for sample in samples:
         receiver_pairs = _prefill(receiver, sample["prefix"])
         if bank is None:
@@ -256,18 +277,26 @@ def evaluate(
         else:
             sharer_pairs = _prefill(sharer, sample["prefix"])
             cache_pairs = bank(receiver_pairs, sharer_pairs, generator)
-        loss, correct = _loss_and_choice(
-            _score(receiver, sample, cache_pairs), sample, letters
+        record = decompose_loss(
+            _score(receiver, sample, cache_pairs), letters, sample["answer"]
         )
-        total_loss += float(loss)
-        n_correct += int(correct)
+        for term in terms:
+            totals[term] += record[term]
+        n_correct += int(record["correct"])
 
     if bank is not None and was_training:
         bank.train()
+    n = len(samples)
     return {
-        "loss": total_loss / len(samples),
-        "accuracy": n_correct / len(samples),
-        "n": len(samples),
+        # `loss` stays the full-vocabulary figure, because the floor
+        # assertion and every existing log compare against it. What is new is
+        # that it is no longer the only thing recorded.
+        "loss": totals["full"] / n,
+        "four_way": totals["four_way"] / n,
+        "letter_mass": totals["letter_mass"] / n,
+        "mass_on_letters": totals["mass_on_letters"] / n,
+        "accuracy": n_correct / n,
+        "n": n,
     }
 
 
@@ -508,6 +537,18 @@ def _gate_logits(bank: FuserBank) -> dict:
 
 
 def main() -> None:
+    # Checked before the imports, not merely before the weights. "First" is
+    # cheap to make literal here, and a collision found at the end of the run
+    # is found three hours too late to be a guard at all.
+    for path in (LOG_PATH, CHECKPOINT_PATH):
+        if path.exists():
+            raise SystemExit(
+                f"{path.relative_to(REPO_ROOT)} already exists. A run today "
+                f"at MODE={MODE!r} and N_TRAIN={N_TRAIN} has been recorded "
+                "already. Move it aside or change the configuration; this "
+                "script will not overwrite hours of measurement."
+            )
+
     from datasets import load_dataset
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -582,6 +623,10 @@ def main() -> None:
     )
     result.update(
         {
+            "run_name": RUN_NAME,
+            # Recorded so the probe reads the weights this log describes and
+            # not whichever checkpoint happens to sit beside it.
+            "checkpoint": CHECKPOINT_PATH.name,
             "receiver_id": RECEIVER_ID,
             "sharer_id": SHARER_ID,
             "dataset": DATASET,
@@ -602,10 +647,8 @@ def main() -> None:
     result["torch_version"] = torch.__version__
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    (RESULTS_DIR / f"fuser_log_{MODE}.json").write_text(
-        json.dumps(result, indent=2) + "\n", encoding="utf-8"
-    )
-    torch.save(bank.state_dict(), RESULTS_DIR / f"fuser_{MODE}.pt")
+    torch.save(bank.state_dict(), CHECKPOINT_PATH)
+    LOG_PATH.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
