@@ -58,7 +58,7 @@ import train_fuser as T  # noqa: E402
 # Which run to probe, named rather than guessed. Globbing for the newest
 # checkpoint would make the answer depend on the state of a directory, and
 # this file's whole job is attribution.
-RUN_NAME = "replace_2026-08-07_n2000"
+RUN_NAME = "fused_2026-08-06_n2000"
 
 RESULTS_DIR = REPO_ROOT / "results"
 LOG_PATH = RESULTS_DIR / f"fuser_{RUN_NAME}.json"
@@ -188,10 +188,15 @@ def main() -> None:
     if len(samples) < T.N_VALIDATION:
         raise SystemExit("ran out of rows before filling the held-out set")
 
-    for record in log["history"]:
-        if record["step"] == 0:
-            recorded_baseline = record["validation_loss"]
-            break
+    # The Receiver alone, taken from the field that records exactly that.
+    #
+    # This read the step-zero validation entry before, which is the fused
+    # system at initialisation and not the Receiver. In the residual arm the
+    # gates start shut and the two are equal by construction, so the check
+    # passed while comparing the wrong quantity. The replacement arm has no
+    # floor, the two are nothing alike there, and it stopped. An agreement
+    # that holds only because of a property of one arm is not a check.
+    recorded_baseline = log["baseline"]["loss"]
 
     bank = FuserBank(
         receiver_contract["n_layers"],
