@@ -93,3 +93,13 @@ run = [
 description = "Where the fused run's loss drop went: the right letter, or a letter at all"
 dir = "{{config_root}}"
 run = ["python scripts/probe_letter_mass.py"]
+
+[tasks.ledger]
+description = "Tier 4: what the exchange costs on this machine"
+dir = "{{config_root}}"
+run = [
+  "python tests/test_static_names.py",
+  "python tests/test_fuser.py",
+  "python scripts/measure_ledger.py",
+  "python tests/test_ledger.py",
+]
