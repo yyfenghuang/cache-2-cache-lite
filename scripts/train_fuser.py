@@ -83,7 +83,7 @@ from c2c.prompting import (  # noqa: E402
 
 # "fused" adds under a gate. "replace" substitutes. Run both; the second is
 # what prices the first.
-MODE = "fused"
+MODE = "replace"
 
 SHARER_ID = "Qwen/Qwen2.5-0.5B-Instruct"
 RECEIVER_ID = "Qwen/Qwen3-0.6B"
