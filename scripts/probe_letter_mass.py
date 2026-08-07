@@ -58,7 +58,7 @@ import train_fuser as T  # noqa: E402
 # Which run to probe, named rather than guessed. Globbing for the newest
 # checkpoint would make the answer depend on the state of a directory, and
 # this file's whole job is attribution.
-RUN_NAME = "fused_2026-08-06_n2000"
+RUN_NAME = "replace_2026-08-07_n2000"
 
 RESULTS_DIR = REPO_ROOT / "results"
 LOG_PATH = RESULTS_DIR / f"fuser_{RUN_NAME}.json"
