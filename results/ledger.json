@@ -1,0 +1,237 @@
+{
+  "payload": {
+    "sent_by_the_sharer": {
+      "n_layers_sent": 24,
+      "n_kv_heads": 2,
+      "head_dim": 64,
+      "elements_per_layer_per_position": 256,
+      "bytes_per_layer_per_position": {
+        "float16": 512,
+        "float32": 1024
+      },
+      "bytes_per_position": {
+        "float16": 12288,
+        "float32": 24576
+      }
+    },
+    "receiver_own_cache_for_scale": {
+      "n_layers_sent": 28,
+      "n_kv_heads": 8,
+      "head_dim": 128,
+      "elements_per_layer_per_position": 2048,
+      "bytes_per_layer_per_position": {
+        "float16": 4096,
+        "float32": 8192
+      },
+      "bytes_per_position": {
+        "float16": 114688,
+        "float32": 229376
+      }
+    },
+    "text_pathway": {
+      "bytes_per_token_id": 2,
+      "bytes_per_token_utf8_estimate": 4,
+      "note": "scales with the response the Sharer would have written, not with the prompt"
+    }
+  },
+  "observed_cache_bytes": {
+    "64": {
+      "sharer_layers_captured": 24,
+      "receiver_layers_captured": 28,
+      "sharer_bytes_float32": 1572864,
+      "receiver_bytes_float32": 14680064
+    },
+    "128": {
+      "sharer_layers_captured": 24,
+      "receiver_layers_captured": 28,
+      "sharer_bytes_float32": 3145728,
+      "receiver_bytes_float32": 29360128
+    },
+    "256": {
+      "sharer_layers_captured": 24,
+      "receiver_layers_captured": 28,
+      "sharer_bytes_float32": 6291456,
+      "receiver_bytes_float32": 58720256
+    },
+    "512": {
+      "sharer_layers_captured": 24,
+      "receiver_layers_captured": 28,
+      "sharer_bytes_float32": 12582912,
+      "receiver_bytes_float32": 117440512
+    }
+  },
+  "timings": {
+    "sharer_prefill": [
+      {
+        "positions": 64,
+        "median_ms": 183.57699399348348,
+        "min_ms": 160.8818369859364,
+        "max_ms": 287.46836600475945,
+        "iqr_ms": 92.82494700164534,
+        "repeats": 7
+      },
+      {
+        "positions": 128,
+        "median_ms": 236.7884480045177,
+        "min_ms": 236.63433699402958,
+        "max_ms": 237.9756419977639,
+        "iqr_ms": 0.2729404950514436,
+        "repeats": 7
+      },
+      {
+        "positions": 256,
+        "median_ms": 455.959979997715,
+        "min_ms": 455.08740600780584,
+        "max_ms": 458.8396089966409,
+        "iqr_ms": 0.9480520093347877,
+        "repeats": 7
+      },
+      {
+        "positions": 512,
+        "median_ms": 973.9248199912254,
+        "min_ms": 964.8163509846199,
+        "max_ms": 976.2076080078259,
+        "iqr_ms": 2.54233849409502,
+        "repeats": 7
+      }
+    ],
+    "receiver_prefill": [
+      {
+        "positions": 64,
+        "median_ms": 196.0515730024781,
+        "min_ms": 192.99404200864956,
+        "max_ms": 215.01578399329446,
+        "iqr_ms": 3.2180049893213436,
+        "repeats": 7
+      },
+      {
+        "positions": 128,
+        "median_ms": 308.0158809898421,
+        "min_ms": 307.1239050186705,
+        "max_ms": 312.8080369788222,
+        "iqr_ms": 3.618613976868801,
+        "repeats": 7
+      },
+      {
+        "positions": 256,
+        "median_ms": 594.9206959921867,
+        "min_ms": 580.7791340048425,
+        "max_ms": 597.4881829752121,
+        "iqr_ms": 2.5998784985858947,
+        "repeats": 7
+      },
+      {
+        "positions": 512,
+        "median_ms": 1387.4044959957246,
+        "min_ms": 1386.827562993858,
+        "max_ms": 1446.7649899888784,
+        "iqr_ms": 8.474590969854034,
+        "repeats": 7
+      }
+    ],
+    "fusion": [
+      {
+        "positions": 64,
+        "median_ms": 15.980322001269087,
+        "min_ms": 15.916178992483765,
+        "max_ms": 16.030168015277013,
+        "iqr_ms": 0.07121849921531975,
+        "repeats": 7
+      },
+      {
+        "positions": 128,
+        "median_ms": 23.913994984468445,
+        "min_ms": 23.749432992190123,
+        "max_ms": 24.17834199150093,
+        "iqr_ms": 0.24069398932624608,
+        "repeats": 7
+      },
+      {
+        "positions": 256,
+        "median_ms": 52.77919600484893,
+        "min_ms": 52.26461199345067,
+        "max_ms": 52.92133000330068,
+        "iqr_ms": 0.15889998758211732,
+        "repeats": 7
+      },
+      {
+        "positions": 512,
+        "median_ms": 99.9248829903081,
+        "min_ms": 99.71905499696732,
+        "max_ms": 100.28501800843515,
+        "iqr_ms": 0.3216429759049788,
+        "repeats": 7
+      }
+    ],
+    "sharer_decode_per_token": [
+      {
+        "positions": 64,
+        "tokens_decoded": 16,
+        "median_ms": 50.310282938880846,
+        "whole_call_median_ms": 988.541521015577,
+        "prefill_subtracted_ms": 183.57699399348348,
+        "repeats": 3,
+        "iqr_ms": 0.6130634064902551,
+        "min_ms": 50.17294762546953,
+        "max_ms": 51.39907443845004
+      },
+      {
+        "positions": 128,
+        "tokens_decoded": 16,
+        "median_ms": 52.260807000493514,
+        "whole_call_median_ms": 1072.961360012414,
+        "prefill_subtracted_ms": 236.7884480045177,
+        "repeats": 3,
+        "iqr_ms": 0.21060709332232364,
+        "min_ms": 52.1248000623018,
+        "max_ms": 52.54601424894645
+      },
+      {
+        "positions": 256,
+        "tokens_decoded": 16,
+        "median_ms": 53.360063686341164,
+        "whole_call_median_ms": 1309.7209989791736,
+        "prefill_subtracted_ms": 455.959979997715,
+        "repeats": 3,
+        "iqr_ms": 0.028346062208584044,
+        "min_ms": 53.34796187526081,
+        "max_ms": 53.404653999677976
+      },
+      {
+        "positions": 512,
+        "tokens_decoded": 16,
+        "median_ms": 57.52831537574821,
+        "whole_call_median_ms": 1894.3778660031967,
+        "prefill_subtracted_ms": 973.9248199912254,
+        "repeats": 3,
+        "iqr_ms": 0.1937950000865385,
+        "min_ms": 57.15375174986548,
+        "max_ms": 57.541341750038555
+      }
+    ]
+  },
+  "positions_measured": [
+    64,
+    128,
+    256,
+    512
+  ],
+  "decode_tokens": 16,
+  "repeats": 7,
+  "warmup": 2,
+  "seed": 42,
+  "device": "cpu",
+  "dtype": "torch.float32",
+  "attn_implementation": "eager",
+  "torch_num_threads": 6,
+  "comparability": "Table 3 prices this pair on an A100 at batch size one, where communication is nearly free. These are CPU numbers on a workstation. Neither setting can distinguish a favourable trade from an irrelevant one, and the ratios are not comparable.",
+  "fuser_run": "fused_2026-08-06_n2000",
+  "fuser_checkpoint": "fuser_fused_2026-08-06_n2000.pt",
+  "fuser_mode": "fused",
+  "n_trainable": 27242976,
+  "model_ids": {
+    "sharer": "Qwen/Qwen2.5-0.5B-Instruct",
+    "receiver": "Qwen/Qwen3-0.6B"
+  },
+  "torch_version": "2.13.0+cpu"
+}

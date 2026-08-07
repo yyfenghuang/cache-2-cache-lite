@@ -15,6 +15,7 @@ env/
 # Jupyter
 .ipynb_checkpoints
 *.ipynb_checkpoints
+*sandbox*.ipynb
 
 # Model & data cache (besar, jangan commit)
 models/
@@ -43,7 +44,7 @@ __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
 
-sandbox/
+sandbox.ipynb
 
 # results: json is tracked, tensors and weights are not
 results/caches/
