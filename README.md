@@ -61,6 +61,42 @@ rather than in whether it can be carried.
 above become the candidate explanations, and each was already measured in
 isolation before training began, so the search has somewhere to start.
 
+## What it found
+
+Of the three outcomes above, the first. A fused system built from scratch on
+this pair scores above the Receiver reading alone, on 500 MMLU-Redux questions
+scored by the same argmax under the same prompt.
+
+| | Accuracy |
+|---|---|
+| Receiver alone | 0.382 |
+| Fused, the Sharer's cache added under a gate | 0.458 |
+| Replacement, the same module substituting instead of adding | 0.250 |
+| The earlier projection, fitted on wikitext under mean squared error | 0.198 |
+
+Against the Receiver alone the fused system gains 0.076, with a paired
+bootstrap interval of [+0.038, +0.112] and McNemar at p = 7.66e-05.
+
+Adding and substituting were then trained on the same corpus, under the same
+loss, for the same steps, from the same weights at step zero, so the two differ
+in the addition and nothing else. That single difference is worth 0.208.
+
+Both substituting builds collapsed onto one letter, answering B on 497 of 500
+and A on 498 of 500, and each scored the base rate of the letter it settled on.
+The gate is what makes the difference: shut, it multiplies the Sharer's
+contribution by exactly zero, so the fused system can always fall back to the
+Receiver alone.
+
+Cost is measured too. Fusion adds about eight percent to the Receiver's own
+prefill and costs less than two tokens of Sharer decode at every length tried,
+while the cache itself is 12,288 bytes per position against a few hundred bytes
+for the text it replaces. Compute favours the exchange on this machine and
+communication does not.
+
+`FINDINGS.md` carries every figure with the file it was read from, the seven
+predictions written before their runs, and the readings that measurement
+overturned.
+
 ## What this is not
 
 Not a benchmark run. The reference implementation exists, is public, and
@@ -72,39 +108,56 @@ Not a faster or better variant. Every architectural choice follows the original
 unless a measurement here says otherwise, and where it does say otherwise, the
 measurement is in `results/`.
 
-Not finished. Every accuracy number this repository will eventually report sits
-behind a single gate that has not been opened, and until it is, `results/` holds
-measurements of geometry and cost only.
+Not settled. Every figure below rests on one training run, one seed, and one
+sample of 500 questions. Nothing here has been repeated, and a result that has
+not been repeated is a result that has not been tested for repeatability.
 
 ## Layout
 
 ```
-c2c_lite/     the mechanism, as pure functions
+c2c/          the mechanism, as pure functions
 scripts/      everything that touches model weights or disk
 tests/        the compliance gates
-results/      contracts and measurements, tracked; tensors and weights
+results/      contracts and measurements, tracked; tensors and weights not
 assets/       figures
+TODO.md       the specification: what each gate claims and how it fails
+FINDINGS.md   what the gates measured
 ```
 
 The split between the first two directories is load-bearing rather than
-cosmetic. Because nothing in `c2c_lite/` loads a model, the entire first stage of
+cosmetic. Because nothing in `c2c/` loads a model, the entire first stage of
 checks runs on a machine that has never downloaded one.
 
 ## Running it
 
+One task per gate, in the order the gates close.
+
 ```sh
-mise run setup       # once
-mise run gates       # every check that does not require training
+mise run contracts          # both models' geometry, from their live configs
+mise run substrate          # an injected cache is read, and position ids are absolute
+mise run geometry           # both caches at the contract shapes, and the null
+mise run train              # a projection beats a constant predictor
+mise run fuser-substrate    # a shut fuser is a no-op, and the loss reaches it
+mise run fuser              # train one arm; set MODE in scripts/train_fuser.py
+mise run analysis           # accuracy, once, over four conditions
+mise run ledger             # what the exchange costs on this machine
 ```
 
-`gates` runs three stages in order: the configuration contract, which reads both
-models' geometry from their live configs; the substrate checks, which establish
-that an injected cache is read and that reading it has consequences; and the
-geometric baseline, which measures how far apart the two caches are before any
-mapping is trained. Each stage writes a file the next one reads, and each script
-refuses to start when its input is missing.
+Three probes are not gates and answer questions raised inside them.
 
-Training runs afterward and only afterward.
+```sh
+mise run shift              # does a projection fitted on wikitext carry to MMLU
+mise run parity             # does the key cache split along the Sharer's rotary ladder
+mise run probe-letter-mass  # where a fused run's loss drop went
+```
+
+Each script writes a file the next one reads and refuses to start when its
+input is missing. The ladder is enforced by that data dependency rather than by
+the runner, so the order above is a convenience and not the mechanism.
+
+Two scripts refuse to overwrite what they wrote before, because a training arm
+costs hours and a graded run is the only accuracy number this repository
+reports.
 
 ## Config contract
 
