@@ -43,11 +43,12 @@ run = [
 ]
 
 [tasks.analysis]
-description = "Tier 3 gate: accuracy, once, with a paired interval and a paired test"
+description = "Tier 5 gate: accuracy, once, over four conditions, with paired intervals and paired tests"
 dir = "{{config_root}}"
 run = [
   "python tests/test_static_names.py",
   "python tests/test_projection.py",
+  "python tests/test_fuser.py",
   "python scripts/analysis.py",
   "python tests/test_analysis.py",
 ]
