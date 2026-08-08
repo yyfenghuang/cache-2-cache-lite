@@ -231,9 +231,11 @@ Layer alignment (terminal): 24 paired target layers, target [0, 1, 2, 3] unpaire
 Token alignment: probe ids identical True, therefore align_tokens is out of scope.
 <!-- contracts:end -->
 ## Citation
+```bibtex
 @article{fu2025c2c,
   title={Cache-to-Cache: Direct Semantic Communication Between Large Language Models},
   author={Tianyu Fu and Zihan Min and Hanling Zhang and Jichao Yan and Guohao Dai and Wanli Ouyang and Yu Wang},
   journal={arXiv preprint arXiv:2510.03215},
   year={2025},
 }
+```
