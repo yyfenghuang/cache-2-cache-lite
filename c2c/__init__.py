@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """C2C-Lite: mechanism only. Nothing in this package performs I/O."""
 
 from c2c.alignment import align_layers, aligned_pairs, align_tokens

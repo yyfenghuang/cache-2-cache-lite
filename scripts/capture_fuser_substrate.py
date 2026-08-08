@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Two halves of one gate: a shut fuser is a no-op, and the loss reaches it.
 
 Silent on success. Everything goes into results/fuser_substrate.json.

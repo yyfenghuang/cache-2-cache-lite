@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """The gate that decides whether a Sharer's contribution is injected at all.
 
 No I/O, no model loading.

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """A projection from the Sharer's cache to the Receiver's, written from scratch.
 
 No I/O, no model loading, no pretrained weights. Checkpoints exist upstream

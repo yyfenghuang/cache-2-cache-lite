@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Layer alignment is a pure function.
 
 SILENT ON SUCCESS by exit 0.

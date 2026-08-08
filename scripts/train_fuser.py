@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Train the fuser under the objective the residual form entails.
 
 Silent on success. Writes results/fuser_<mode>_<date>_n<N>.json and the

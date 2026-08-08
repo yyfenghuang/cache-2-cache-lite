@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """The MMLU prompt, defined once.
 
 No I/O, no model loading. Tokenizing is neither.

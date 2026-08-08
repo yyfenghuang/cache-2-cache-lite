@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """The receiver reads an injected cache, and reading it has consequences.
 
 Silent on success, exit 0. Refuses to start when results/substrate.json is

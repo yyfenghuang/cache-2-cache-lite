@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Does the Receiver's key cache split along the Sharer's rotary ladder?
 
 A probe, not a gate. It records a measurement and adjudicates a prediction by

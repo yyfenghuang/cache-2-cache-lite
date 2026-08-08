@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """A projection reaches below the geometric null, on data it did not see.
 
 Silent on success, exit 0. Refuses to start when results/train_log.json is

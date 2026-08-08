@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """What the exchange costs on this machine.
 
 Silent on success. Writes results/ledger.json.

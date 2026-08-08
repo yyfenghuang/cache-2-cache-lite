@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Train one projection per paired layer, per tensor kind, and grade it.
 
 Silent on success. Everything goes into results/train_log.json.

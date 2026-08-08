@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Every global a function reaches for exists in its module.
 
 Silent on success, exit 0. No third-party linter, because a gate that fails

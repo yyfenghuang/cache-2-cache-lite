@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Both caches, split by article, and the number every training loss is read against.
 
 Silent on success. Writes results/geometric_null.json and the cache tensors

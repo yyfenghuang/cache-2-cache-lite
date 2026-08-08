@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Both caches at the contract shapes, split by article, with a null per split.
 
 Silent on success, exit 0.

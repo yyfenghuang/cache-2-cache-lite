@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Does the projection carry to the distribution it was graded on?
 
 A probe, not a gate. It records a measurement and is adjudicated by being

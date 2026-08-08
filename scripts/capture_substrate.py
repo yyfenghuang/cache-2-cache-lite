@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Five conditions on one model, no gradients.
 
 Silent on success. Everything goes into results/substrate.json.

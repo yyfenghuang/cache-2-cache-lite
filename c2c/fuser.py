@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """The fuser, which adds where the projection replaced.
 
 No I/O, no model loading.

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Where the loss went. A probe, not a gate.
 
 Writes results/letter_mass_<run name>.json.

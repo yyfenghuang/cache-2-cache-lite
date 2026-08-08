@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Accuracy exists, with an interval and a paired test, over records that
 were read before the aggregate was trusted.
 

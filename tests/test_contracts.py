@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """The KV geometry of both models is known exactly.
 
 Silent on success, exit 0. Refuses to start when results/contracts.json is

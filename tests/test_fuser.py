@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """The fuser and its gate, with no model and no checkpoint.
 
 Silent on success, exit 0.

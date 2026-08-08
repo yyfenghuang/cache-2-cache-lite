@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """A shut fuser is a no-op, and the loss reaches it. Both, or neither counts.
 
 Silent on success, exit 0. Refuses to start when

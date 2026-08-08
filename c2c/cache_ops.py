@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Operations on a key-value cache.
 
 Pure with respect to its arguments: every function here returns a new cache

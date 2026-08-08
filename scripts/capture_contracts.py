@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Read two live configs and write the contract.
 
 Silent on success. Everything it learns goes into results/contracts.json and

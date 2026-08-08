@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Layer and token alignment between a Sharer and a Receiver.
 """
 

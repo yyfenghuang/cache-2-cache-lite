@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """The projection, and the floor it is graded against, in the same units.
 
 Silent on success, exit 0. No checkpoint, no results file, no model.

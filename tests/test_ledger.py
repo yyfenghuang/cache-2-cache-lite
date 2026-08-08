@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """The ledger is complete, its arithmetic closes, and no timing stands alone.
 
 Silent on success, exit 0. Refuses to start when results/ledger.json is absent.

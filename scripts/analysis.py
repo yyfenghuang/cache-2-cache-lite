@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Accuracy, once, with a confidence interval and a paired test.
 
 Silent on success. Writes results/run_<date>_n<N>.json.

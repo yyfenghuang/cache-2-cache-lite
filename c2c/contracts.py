@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Config contract for a Sharer/Receiver pair.
 
 Everything here is a pure function of configuration objects. A "config" is anything
